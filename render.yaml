@@ -1,0 +1,44 @@
+# Render Blueprint for Schedula
+# Deploy at: https://render.com
+
+services:
+  # Backend API Service
+  - type: web
+    name: schedula-api
+    runtime: node
+    rootDir: Schedula/backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRE
+        value: 7d
+      - key: MONGODB_URI
+        sync: false # Add manually in Render dashboard
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: schedula-frontend
+          envVarKey: RENDER_EXTERNAL_URL
+    healthCheckPath: /api/health
+
+  # Frontend Static Site
+  - type: web
+    name: schedula-frontend
+    runtime: static
+    rootDir: Schedula/frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: build
+    envVars:
+      - key: REACT_APP_API_URL
+        fromService:
+          type: web
+          name: schedula-api
+          envVarKey: RENDER_EXTERNAL_URL
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
