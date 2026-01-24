@@ -79,20 +79,22 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Start server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`
-  ╔═══════════════════════════════════════════════════════╗
-  ║                                                       ║
-  ║   🗓️  SCHEDULA API Server                             ║
-  ║   Explainable AI-Powered Scheduling System            ║
-  ║                                                       ║
-  ║   🚀 Server running on port ${PORT}                      ║
-  ║   📊 Environment: ${process.env.NODE_ENV || "development"}                       ║
-  ║                                                       ║
-  ╚═══════════════════════════════════════════════════════╝
-  `);
-});
+// Start server (skip when running as a serverless function on Vercel)
+if (!process.env.VERCEL) {
+  const PORT = process.env.PORT || 5000;
+  app.listen(PORT, () => {
+    console.log(`
+    ╔═══════════════════════════════════════════════════════╗
+    ║                                                       ║
+    ║   🗓️  SCHEDULA API Server                             ║
+    ║   Explainable AI-Powered Scheduling System            ║
+    ║                                                       ║
+    ║   🚀 Server running on port ${PORT}                      ║
+    ║   📊 Environment: ${process.env.NODE_ENV || "development"}                       ║
+    ║                                                       ║
+    ╚═══════════════════════════════════════════════════════╝
+    `);
+  });
+}
 
 module.exports = app;

@@ -53,7 +53,7 @@ const AppLayout = ({ children }) => {
   const { isAuthenticated } = useAuth();
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-indigo-50/30">
       {isAuthenticated && <Header />}
       <main className={isAuthenticated ? "pt-16" : ""}>{children}</main>
     </div>
