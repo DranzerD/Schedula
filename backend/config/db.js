@@ -55,5 +55,3 @@ const getConnectionStatus = () => isConnected;
 
 module.exports = connectDB;
 module.exports.getConnectionStatus = getConnectionStatus;
-
-module.exports = connectDB;
