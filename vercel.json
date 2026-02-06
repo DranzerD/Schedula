@@ -3,7 +3,10 @@
   "builds": [
     {
       "src": "backend/server.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["backend/**"]
+      }
     },
     {
       "src": "frontend/package.json",
@@ -23,7 +26,9 @@
       "dest": "frontend/$1"
     }
   ],
-  "env": {
-    "NODE_ENV": "production"
+  "functions": {
+    "backend/server.js": {
+      "includeFiles": "backend/**"
+    }
   }
 }
