@@ -6,9 +6,16 @@
 const Task = require("../models/Task");
 const {
   generateDailySchedule,
+  generateRangeSchedule,
   reschedule,
   calculateAllScores,
 } = require("../services/schedulingEngine");
+const {
+  buildTaskFacts,
+  deterministicNarrative,
+  narrate,
+  generateInsights,
+} = require("../services/aiService");
 
 /**
  * @desc    Generate daily schedule
@@ -19,17 +26,13 @@ const getSchedule = async (req, res) => {
   try {
     const { date } = req.query;
 
-    // Parse date or use today
-    const scheduleDate = date ? new Date(date) : new Date();
+    // "YYYY-MM-DD" (interpreted in the user's timezone) or any ISO date; default today
+    const scheduleDate = date || new Date();
 
-    // Get all pending tasks for this user
-    const tasks = await Task.find({
-      user: req.user.id,
-      isCompleted: false,
-      deadline: { $gte: new Date() },
-    });
+    // All pending tasks; the engine decides which are relevant to the day
+    // (including overdue ones, which are surfaced on today's plan)
+    const tasks = await Task.find({ user: req.user.id, isCompleted: false });
 
-    // Generate schedule
     const schedule = generateDailySchedule(tasks, req.user, scheduleDate);
 
     res.json({
@@ -55,14 +58,9 @@ const regenerateSchedule = async (req, res) => {
   try {
     const { date, incompleteTaskId, actualDuration } = req.body;
 
-    const scheduleDate = date ? new Date(date) : new Date();
+    const scheduleDate = date || new Date();
 
-    // Get all pending tasks
-    const tasks = await Task.find({
-      user: req.user.id,
-      isCompleted: false,
-      deadline: { $gte: new Date() },
-    });
+    const tasks = await Task.find({ user: req.user.id, isCompleted: false });
 
     // Reschedule with options
     const result = reschedule(tasks, req.user, {
@@ -71,18 +69,42 @@ const regenerateSchedule = async (req, res) => {
       date: scheduleDate,
     });
 
-    // Update tasks with new scheduled times
+    // Persist new slots for movable tasks (fixed tasks keep the user's time)
+    // and record every move in the task's reschedule history
+    const byId = new Map(tasks.map((t) => [String(t._id), t]));
     for (const slot of result.schedule.slots) {
-      await Task.findByIdAndUpdate(slot.taskId, {
-        scheduledStart: slot.scheduledStart,
-        scheduledEnd: slot.scheduledEnd,
-        "scheduling.urgencyScore": slot.scores.urgencyScore,
-        "scheduling.importanceScore": slot.scores.importanceScore,
-        "scheduling.riskScore": slot.scores.riskScore,
-        "scheduling.finalScore": slot.scores.finalScore,
-        "scheduling.explanation": slot.explanation,
-        "scheduling.lastComputedAt": new Date(),
-      });
+      if (slot.fixed) continue;
+      const task = byId.get(String(slot.taskId));
+      if (!task) continue;
+
+      const newStart = new Date(slot.scheduledStart);
+      if (
+        task.scheduledStart &&
+        new Date(task.scheduledStart).getTime() !== newStart.getTime()
+      ) {
+        const change = result.changes.find(
+          (c) => String(c.taskId) === String(slot.taskId),
+        );
+        task.rescheduleHistory.push({
+          previousStart: task.scheduledStart,
+          previousEnd: task.scheduledEnd,
+          newStart,
+          newEnd: new Date(slot.scheduledEnd),
+          reason: change?.explanation || "Schedule regenerated",
+        });
+      }
+
+      task.scheduledStart = newStart;
+      task.scheduledEnd = new Date(slot.scheduledEnd);
+      task.scheduling = {
+        urgencyScore: slot.scores.urgencyScore,
+        importanceScore: slot.scores.importanceScore,
+        riskScore: slot.scores.riskScore,
+        finalScore: slot.scores.finalScore,
+        explanation: slot.explanation,
+        lastComputedAt: new Date(),
+      };
+      await task.save();
     }
 
     res.json({
@@ -119,13 +141,17 @@ const getScheduleRange = async (req, res) => {
       });
     }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-
-    // Limit to 7 days
+    const dayMs = 24 * 60 * 60 * 1000;
+    const daysDiff =
+      Math.round((new Date(endDate) - new Date(startDate)) / dayMs) + 1;
     const maxDays = 7;
-    const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
 
+    if (isNaN(daysDiff) || daysDiff < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "endDate must be on or after startDate",
+      });
+    }
     if (daysDiff > maxDays) {
       return res.status(400).json({
         success: false,
@@ -133,22 +159,10 @@ const getScheduleRange = async (req, res) => {
       });
     }
 
-    // Get all pending tasks
-    const tasks = await Task.find({
-      user: req.user.id,
-      isCompleted: false,
-      deadline: { $gte: start },
-    });
+    const tasks = await Task.find({ user: req.user.id, isCompleted: false });
 
-    // Generate schedule for each day
-    const schedules = [];
-    const currentDate = new Date(start);
-
-    while (currentDate <= end) {
-      const daySchedule = generateDailySchedule(tasks, req.user, currentDate);
-      schedules.push(daySchedule);
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
+    // Tasks placed on an earlier day are not planned again on later days
+    const schedules = generateRangeSchedule(tasks, req.user, startDate, endDate);
 
     res.json({
       success: true,
@@ -185,8 +199,16 @@ const getTaskExplanation = async (req, res) => {
     // Calculate fresh scores
     const scores = calculateAllScores(task, req.user);
 
-    // Build detailed explanation
+    // Build detailed explanation (deterministic, always present)
     const explanation = buildDetailedExplanation(task, scores);
+
+    // Plain-English narrative: Groq when configured, grounded in the same
+    // numbers; deterministic text otherwise (see services/aiService.js)
+    const facts = buildTaskFacts(task, scores, req.user);
+    const narrative =
+      req.query.ai === "false"
+        ? { narrative: deterministicNarrative(facts), source: "rules" }
+        : await narrate(facts);
 
     res.json({
       success: true,
@@ -195,6 +217,8 @@ const getTaskExplanation = async (req, res) => {
         taskTitle: task.title,
         scores,
         explanation,
+        narrative: narrative.narrative,
+        narrativeSource: narrative.source,
       },
     });
   } catch (error) {
@@ -202,6 +226,28 @@ const getTaskExplanation = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to get task explanation",
+    });
+  }
+};
+
+/**
+ * @desc    AI insights for a day's schedule (Groq-enhanced, rules fallback)
+ * @route   GET /api/schedule/suggestions
+ * @access  Private
+ */
+const getSuggestions = async (req, res) => {
+  try {
+    const scheduleDate = req.query.date || new Date();
+    const tasks = await Task.find({ user: req.user.id, isCompleted: false });
+    const schedule = generateDailySchedule(tasks, req.user, scheduleDate);
+    const result = await generateInsights({ schedule, tasks, user: req.user });
+
+    res.json({ success: true, data: result });
+  } catch (error) {
+    console.error("Get suggestions error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate suggestions",
     });
   }
 };
@@ -313,4 +359,5 @@ module.exports = {
   regenerateSchedule,
   getScheduleRange,
   getTaskExplanation,
+  getSuggestions,
 };

@@ -17,6 +17,7 @@
    - Connect your GitHub repository
    - Create a new Blueprint and select this repo
    - Add environment variable `MONGODB_URI` with your Atlas connection string
+   - (Optional) Add `GROQ_API_KEY` from https://console.groq.com/keys to enable the language features; without it the app runs in rules-only mode
    - Click Deploy!
 
 ### Option 2: Vercel + Railway
@@ -25,19 +26,20 @@
 
 1. Go to [Vercel](https://vercel.com)
 2. Import your GitHub repository
-3. Set root directory to `Schedula/frontend`
+3. Set root directory to `frontend`
 4. Add environment variable: `REACT_APP_API_URL=https://your-backend-url.railway.app/api`
 
 **Backend (Railway):**
 
 1. Go to [Railway](https://railway.app)
 2. Create new project from GitHub
-3. Set root directory to `Schedula/backend`
+3. Set root directory to `backend`
 4. Add environment variables:
    - `MONGODB_URI` - Your MongoDB Atlas URI
    - `JWT_SECRET` - A secure random string
    - `FRONTEND_URL` - Your Vercel frontend URL
    - `NODE_ENV` - production
+   - `GROQ_API_KEY` - optional, enables Groq features
 
 ### Option 3: Heroku
 
@@ -73,7 +75,14 @@ MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/schedula
 JWT_SECRET=your-super-secret-key
 JWT_EXPIRE=7d
 FRONTEND_URL=https://your-frontend-url.com
+
+# Optional: Groq language features (rules-only if omitted)
+GROQ_API_KEY=
+GROQ_MODEL=openai/gpt-oss-120b
+GROQ_FAST_MODEL=openai/gpt-oss-20b
 ```
+
+Set secrets in your host's dashboard, never in committed files. Verify with `GET /api/health` - the `ai` field reads `groq-configured` or `rules-only`.
 
 ### Frontend (.env)
 

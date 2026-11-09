@@ -9,6 +9,9 @@ import TaskForm from "../components/TaskForm";
 import TaskList from "../components/TaskList";
 import Calendar from "../components/Calendar";
 import ExplanationPanel from "../components/ExplanationPanel";
+import AISuggestions from "../components/AISuggestions";
+import QuickAdd from "../components/QuickAdd";
+import { localDateKey } from "../utils/dateHelpers";
 
 const Home = () => {
   const [schedule, setSchedule] = useState(null);
@@ -18,6 +21,8 @@ const Home = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
+  const [draft, setDraft] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -27,7 +32,7 @@ const Home = () => {
       setLoading(true);
       setError(null);
 
-      const dateStr = selectedDate.toISOString().split("T")[0];
+      const dateStr = localDateKey(selectedDate);
 
       const [tasksRes, scheduleRes, statsRes] = await Promise.all([
         tasksAPI.getAll({
@@ -42,6 +47,7 @@ const Home = () => {
       setTasks(tasksRes.data.data.tasks);
       setSchedule(scheduleRes.data.data.schedule);
       setStats(statsRes.data.data.stats);
+      setRefreshKey((k) => k + 1);
     } catch (err) {
       console.error("Failed to fetch data:", err);
       setError("Failed to load data. Please try again.");
@@ -59,6 +65,7 @@ const Home = () => {
     try {
       await tasksAPI.create(taskData);
       setShowTaskForm(false);
+      setDraft(null);
       fetchData();
     } catch (err) {
       console.error("Failed to create task:", err);
@@ -111,7 +118,7 @@ const Home = () => {
   // Regenerate schedule
   const handleRegenerateSchedule = async () => {
     try {
-      const dateStr = selectedDate.toISOString().split("T")[0];
+      const dateStr = localDateKey(selectedDate);
       await scheduleAPI.regenerate({ date: dateStr });
       fetchData();
     } catch (err) {
@@ -240,9 +247,25 @@ const Home = () => {
 
           {/* Right Column - Tasks & Explanations */}
           <div className="space-y-6 animate-fade-in animation-delay-300">
+            {/* Natural-language quick add (Groq) */}
+            <QuickAdd
+              onParsed={(result) => {
+                setDraft({
+                  ...result.task,
+                  assumptions: result.assumptions,
+                  warnings: result.warnings,
+                  source: result.source,
+                });
+                setShowTaskForm(true);
+              }}
+            />
+
             {/* Add Task Button */}
             <button
-              onClick={() => setShowTaskForm(true)}
+              onClick={() => {
+                setDraft(null);
+                setShowTaskForm(true);
+              }}
               className="group w-full py-4 px-6 bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 hover:from-violet-700 hover:via-indigo-700 hover:to-purple-700 text-white font-semibold rounded-2xl shadow-xl shadow-indigo-500/30 hover:shadow-2xl hover:shadow-indigo-500/40 transition-all duration-300 flex items-center justify-center gap-3 hover:-translate-y-0.5"
             >
               <div className="w-8 h-8 bg-white/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -262,6 +285,12 @@ const Home = () => {
               </div>
               <span>Add New Task</span>
             </button>
+
+            {/* AI insights */}
+            <AISuggestions
+              date={localDateKey(selectedDate)}
+              refreshKey={refreshKey}
+            />
 
             {/* Task List */}
             <TaskList
@@ -288,6 +317,7 @@ const Home = () => {
       {(showTaskForm || editingTask) && (
         <TaskForm
           task={editingTask}
+          draft={draft}
           onSubmit={
             editingTask
               ? (data) => handleUpdateTask(editingTask._id, data)
@@ -296,6 +326,7 @@ const Home = () => {
           onClose={() => {
             setShowTaskForm(false);
             setEditingTask(null);
+            setDraft(null);
           }}
         />
       )}

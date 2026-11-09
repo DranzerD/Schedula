@@ -6,7 +6,7 @@ services:
   - type: web
     name: schedula-api
     runtime: node
-    rootDir: Schedula/backend
+    rootDir: backend
     buildCommand: npm install
     startCommand: npm start
     envVars:
@@ -18,6 +18,12 @@ services:
         value: 7d
       - key: MONGODB_URI
         sync: false # Add manually in Render dashboard
+      - key: GROQ_API_KEY
+        sync: false # Optional. Add manually in Render dashboard; app falls back to rules-only without it
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: GROQ_FAST_MODEL
+        value: openai/gpt-oss-20b
       - key: FRONTEND_URL
         fromService:
           type: web
@@ -29,7 +35,7 @@ services:
   - type: web
     name: schedula-frontend
     runtime: static
-    rootDir: Schedula/frontend
+    rootDir: frontend
     buildCommand: npm install && npm run build
     staticPublishPath: build
     envVars:

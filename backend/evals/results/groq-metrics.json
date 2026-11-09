@@ -1,0 +1,433 @@
+{
+  "generatedAt": "2026-11-09T07:10:52.068Z",
+  "referenceNow": "2026-11-09T04:30:00.000Z",
+  "timezone": "Asia/Kolkata",
+  "sets": {
+    "standard": {
+      "cases": 30,
+      "heuristic": {
+        "fields": {
+          "title": {
+            "right": 30,
+            "total": 30
+          },
+          "duration": {
+            "right": 29,
+            "total": 29
+          },
+          "priority": {
+            "right": 30,
+            "total": 30
+          },
+          "energy": {
+            "right": 27,
+            "total": 27
+          },
+          "flexibility": {
+            "right": 21,
+            "total": 24
+          },
+          "date": {
+            "right": 27,
+            "total": 28
+          },
+          "time": {
+            "right": 20,
+            "total": 20
+          },
+          "start": {
+            "right": 2,
+            "total": 5
+          }
+        },
+        "allCorrect": 26,
+        "total": 30
+      },
+      "parsing": [
+        {
+          "model": "openai/gpt-oss-120b",
+          "fields": {
+            "title": {
+              "right": 30,
+              "total": 30
+            },
+            "duration": {
+              "right": 29,
+              "total": 29
+            },
+            "priority": {
+              "right": 30,
+              "total": 30
+            },
+            "energy": {
+              "right": 27,
+              "total": 27
+            },
+            "flexibility": {
+              "right": 24,
+              "total": 24
+            },
+            "date": {
+              "right": 28,
+              "total": 28
+            },
+            "time": {
+              "right": 20,
+              "total": 20
+            },
+            "start": {
+              "right": 5,
+              "total": 5
+            }
+          },
+          "allCorrect": 30,
+          "total": 30,
+          "groqServed": 30,
+          "fellBack": 0,
+          "fallbackReasons": [],
+          "latencyP50": 797,
+          "latencyP95": 2560,
+          "tokensAvg": 870,
+          "failures": []
+        }
+      ]
+    },
+    "holdout": {
+      "cases": 16,
+      "heuristic": {
+        "fields": {
+          "title": {
+            "right": 16,
+            "total": 16
+          },
+          "duration": {
+            "right": 14,
+            "total": 16
+          },
+          "priority": {
+            "right": 11,
+            "total": 12
+          },
+          "date": {
+            "right": 10,
+            "total": 16
+          },
+          "flexibility": {
+            "right": 0,
+            "total": 3
+          },
+          "time": {
+            "right": 3,
+            "total": 6
+          },
+          "start": {
+            "right": 0,
+            "total": 2
+          },
+          "energy": {
+            "right": 3,
+            "total": 3
+          }
+        },
+        "allCorrect": 5,
+        "total": 16
+      },
+      "parsing": [
+        {
+          "model": "openai/gpt-oss-120b",
+          "fields": {
+            "title": {
+              "right": 16,
+              "total": 16
+            },
+            "duration": {
+              "right": 16,
+              "total": 16
+            },
+            "priority": {
+              "right": 12,
+              "total": 12
+            },
+            "date": {
+              "right": 16,
+              "total": 16
+            },
+            "flexibility": {
+              "right": 3,
+              "total": 3
+            },
+            "time": {
+              "right": 6,
+              "total": 6
+            },
+            "start": {
+              "right": 2,
+              "total": 2
+            },
+            "energy": {
+              "right": 3,
+              "total": 3
+            }
+          },
+          "allCorrect": 16,
+          "total": 16,
+          "groqServed": 16,
+          "fellBack": 0,
+          "fallbackReasons": [],
+          "latencyP50": 703,
+          "latencyP95": 2085,
+          "tokensAvg": 1024,
+          "failures": []
+        }
+      ]
+    }
+  },
+  "narratives": {
+    "total": 12,
+    "groqUsed": 8,
+    "rejectReasons": {
+      "ungrounded": 3,
+      "unsupported-placement": 1
+    },
+    "rejectedUngrounded": 4,
+    "fellBackOther": 0,
+    "avgWords": 57,
+    "latencyP50": 503,
+    "samples": [
+      {
+        "facts": {
+          "title": "Task 0",
+          "priority": "high",
+          "energyLevel": "low-focus",
+          "flexibility": "movable",
+          "estimatedDurationMinutes": 15,
+          "deadline": "2026-11-10 12:45 PM",
+          "hoursUntilDeadline": 28.3,
+          "overdue": false,
+          "scores": {
+            "urgency": 2,
+            "importance": 60,
+            "risk": 0,
+            "final": 22
+          },
+          "weightsPercent": {
+            "urgency": 40,
+            "importance": 35,
+            "risk": 25
+          }
+        },
+        "narrative": "The score of 22 comes from the weighted sum of urgency, importance, and risk. Urgency is 2, importance 60, risk 0, and the weights are 40 % urgency, 35 % importance, 25 % risk. These numbers combine to give the final priority of 22."
+      },
+      {
+        "facts": {
+          "title": "Task 2",
+          "priority": "medium",
+          "energyLevel": "deep-focus",
+          "flexibility": "movable",
+          "estimatedDurationMinutes": 90,
+          "deadline": "2026-11-09 02:15 PM",
+          "hoursUntilDeadline": 5.8,
+          "overdue": false,
+          "scores": {
+            "urgency": 51,
+            "importance": 40,
+            "risk": 15,
+            "final": 38
+          },
+          "weightsPercent": {
+            "urgency": 40,
+            "importance": 35,
+            "risk": 25
+          }
+        },
+        "narrative": "The score of 38 comes mainly from the urgency weight of 51, which is 40 % of the final calculation, and the importance weight of 40, which is 35 %. The risk score of 15 contributes 25 % to the final, pulling the overall value down. The combination of a 5.8‑hour deadline and a 90‑minute duration keeps the urgency high, while the moderate importance and low risk lower the final score."
+      },
+      {
+        "facts": {
+          "title": "Task 4",
+          "priority": "medium",
+          "energyLevel": "low-focus",
+          "flexibility": "movable",
+          "estimatedDurationMinutes": 30,
+          "deadline": "2026-11-07 12:30 PM",
+          "hoursUntilDeadline": -44,
+          "overdue": true,
+          "scores": {
+            "urgency": 100,
+            "importance": 30,
+            "risk": 100,
+            "final": 76
+          },
+          "weightsPercent": {
+            "urgency": 40,
+            "importance": 35,
+            "risk": 25
+          }
+        },
+        "narrative": "The score of 76 comes mainly from the high urgency and risk values, each 100, weighted at 40 % and 25 % respectively. The importance score of 30, weighted at 35 %, contributes less. The task is overdue by 44 hours, with a deadline of 2026‑11‑07 12:30 PM, and its low‑focus energy level and 30‑minute duration make it a movable, medium‑priority item."
+      },
+      {
+        "facts": {
+          "title": "Task 7",
+          "priority": "medium",
+          "energyLevel": "low-focus",
+          "flexibility": "movable",
+          "estimatedDurationMinutes": 90,
+          "deadline": "2026-11-15 03:15 PM",
+          "hoursUntilDeadline": 150.8,
+          "overdue": false,
+          "scores": {
+            "urgency": 2,
+            "importance": 30,
+            "risk": 0,
+            "final": 11
+          },
+          "weightsPercent": {
+            "urgency": 40,
+            "importance": 35,
+            "risk": 25
+          }
+        },
+        "narrative": "Task 7 earned a medium priority because its importance score of 30, weighted at 35 %, dominates the calculation, while the urgency score of 2 (40 %) and risk score of 0 (25 %) contribute little. The 90‑minute duration and 150.8 hours until the 2026‑11‑15 03:15 PM deadline keep the overall score low."
+      },
+      {
+        "facts": {
+          "title": "Task 8",
+          "priority": "medium",
+          "energyLevel": "deep-focus",
+          "flexibility": "movable",
+          "estimatedDurationMinutes": 30,
+          "deadline": "2026-11-12 10:45 AM",
+          "hoursUntilDeadline": 74.3,
+          "overdue": false,
+          "scores": {
+            "urgency": 1,
+            "importance": 40,
+            "risk": 0,
+            "final": 14
+          },
+          "weightsPercent": {
+            "urgency": 40,
+            "importance": 35,
+            "risk": 25
+          }
+        },
+        "narrative": "Task 8 earned a medium priority because its final score of 14 is driven mainly by an importance weight of 35 % and an urgency weight of 40 %, while risk contributes 0 %. The 30‑minute duration and 74.3 hours until the 10:45 AM deadline keep the urgency low, resulting in a moderate overall priority."
+      },
+      {
+        "facts": {
+          "title": "Task 9",
+          "priority": "medium",
+          "energyLevel": "deep-focus",
+          "flexibility": "movable",
+          "estimatedDurationMinutes": 60,
+          "deadline": "2026-11-14 04:30 PM",
+          "hoursUntilDeadline": 128,
+          "overdue": false,
+          "scores": {
+            "urgency": 2,
+            "importance": 40,
+            "risk": 0,
+            "final": 15
+          },
+          "weightsPercent": {
+            "urgency": 40,
+            "importance": 35,
+            "risk": 25
+          }
+        },
+        "narrative": "The score of 15 comes mainly from the importance weight of 40, which is 35% of the total, and the urgency weight of 2, which is 40% of the total. The risk score is 0, contributing 25% of the total, so it does not raise the final value. The combination of a moderate urgency, high importance, and no risk results in the medium priority."
+      },
+      {
+        "facts": {
+          "title": "Task 10",
+          "priority": "low",
+          "energyLevel": "deep-focus",
+          "flexibility": "movable",
+          "estimatedDurationMinutes": 60,
+          "deadline": "2026-11-16 05:45 PM",
+          "hoursUntilDeadline": 177.3,
+          "overdue": false,
+          "scores": {
+            "urgency": 1,
+            "importance": 10,
+            "risk": 0,
+            "final": 4
+          },
+          "weightsPercent": {
+            "urgency": 40,
+            "importance": 35,
+            "risk": 25
+          }
+        },
+        "narrative": "The task’s final score of 4 comes mainly from its importance weight of 10, which is high, but its urgency weight is only 1 and risk is 0, so the overall weighted sum stays low. With 177.3 hours until the deadline and no overdue status, the urgency contribution is minimal, keeping the priority low."
+      },
+      {
+        "facts": {
+          "title": "Task 11",
+          "priority": "medium",
+          "energyLevel": "low-focus",
+          "flexibility": "movable",
+          "estimatedDurationMinutes": 120,
+          "deadline": "2026-11-10 04:30 PM",
+          "hoursUntilDeadline": 32,
+          "overdue": false,
+          "scores": {
+            "urgency": 13,
+            "importance": 30,
+            "risk": 0,
+            "final": 16
+          },
+          "weightsPercent": {
+            "urgency": 40,
+            "importance": 35,
+            "risk": 25
+          }
+        },
+        "narrative": "The score of 16 comes from the weighted sum of urgency 13, importance 30, and risk 0, with weights 40%, 35%, and 25% respectively. The low risk and moderate urgency and importance balance to a medium priority. The 32 hours until the deadline and 120‑minute duration also support this level."
+      }
+    ]
+  },
+  "insights": [
+    {
+      "scenario": "8 tasks",
+      "source": "groq",
+      "suggestions": 3,
+      "groqWorded": 3,
+      "briefing": "Today you have 5 scheduled tasks, 53% utilization, and 3 tasks couldn't fit. Keep an eye on 2 urgent items due soon."
+    },
+    {
+      "scenario": "15 tasks",
+      "source": "groq",
+      "suggestions": 5,
+      "groqWorded": 5,
+      "briefing": "You have a busy day with 7 scheduled tasks, 8 unscheduled, and 2 overdue items."
+    },
+    {
+      "scenario": "25 tasks",
+      "source": "groq",
+      "suggestions": 5,
+      "groqWorded": 4,
+      "briefing": "You have 6 scheduled tasks, 78% utilization, 4 overdue items, 19 unscheduled tasks, and a heavy backlog of 25 pending items."
+    },
+    {
+      "scenario": "5 tasks",
+      "source": "groq",
+      "suggestions": 2,
+      "groqWorded": 2,
+      "briefing": "You have 5 tasks today with 56% utilization, 60 minutes deep focus, and no overdue items."
+    }
+  ],
+  "groqMetrics": {
+    "requests": 62,
+    "successes": 62,
+    "failures": 0,
+    "retries": 0,
+    "promptTokens": 38998,
+    "completionTokens": 12143,
+    "totalLatencyMs": 54379,
+    "lastError": null,
+    "lastErrorAt": null,
+    "avgLatencyMs": 877
+  }
+}

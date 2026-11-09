@@ -76,6 +76,16 @@ export const scheduleAPI = {
   getRange: (startDate, endDate) =>
     api.get("/schedule/range", { params: { startDate, endDate } }),
   getExplanation: (taskId) => api.get(`/schedule/explain/${taskId}`),
+  getSuggestions: (date) => api.get("/schedule/suggestions", { params: { date } }),
+};
+
+// ========================================
+// AI API (Groq-powered, with rule-based fallback on the server)
+// ========================================
+
+export const aiAPI = {
+  getStatus: () => api.get("/ai/status"),
+  parseTask: (text) => api.post("/ai/parse-task", { text }),
 };
 
 // ========================================

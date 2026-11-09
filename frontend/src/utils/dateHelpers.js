@@ -178,6 +178,39 @@ export const formatDuration = (minutes) => {
   return `${hours}h ${mins}m`;
 };
 
+/**
+ * Wall-clock helpers in an explicit IANA timezone (the schedule is computed
+ * in the user's saved timezone, which may differ from the browser's).
+ */
+const safeZone = (tz) => {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return tz;
+  } catch (e) {
+    return undefined; // browser default
+  }
+};
+
+export const minutesOfDayInTimeZone = (iso, tz) => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "numeric",
+    hourCycle: "h23",
+    timeZone: safeZone(tz),
+  }).formatToParts(new Date(iso));
+  const get = (type) => Number(parts.find((p) => p.type === type)?.value || 0);
+  return (get("hour") % 24) * 60 + get("minute");
+};
+
+export const formatTimeInTimeZone = (iso, tz) =>
+  new Date(iso).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: safeZone(tz),
+  });
+
+export const localDateKey = (date) => format(date, "yyyy-MM-dd");
+
 export default {
   formatDate,
   formatTime,
@@ -192,4 +225,7 @@ export default {
   generateTimeSlots,
   getWeekDates,
   formatDuration,
+  minutesOfDayInTimeZone,
+  formatTimeInTimeZone,
+  localDateKey,
 };

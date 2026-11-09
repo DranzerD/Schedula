@@ -1,230 +1,163 @@
 /**
  * Schedula - Scheduling Engine
  *
- * This is the core AI module that computes optimal task schedules
- * using explainable, deterministic algorithms.
+ * The deterministic, explainable core. Given tasks + a user's preferences it
+ * produces a conflict-free daily plan and a human-readable reason for every
+ * decision. No randomness, no network, no LLM: same input => same output.
  *
- * Key components:
- * 1. Score Calculator - Computes urgency, importance, and risk scores
- * 2. Schedule Generator - Creates optimal daily schedules
- * 3. Explanation Generator - Produces human-readable explanations
- * 4. Rescheduler - Handles dynamic schedule adjustments
+ * Components
+ *  1. Score calculators   urgency / importance / risk -> final score
+ *  2. Schedule generator  daily + multi-day (range) planning
+ *  3. Explanation builder reasons + text for every slot
+ *  4. Rescheduler         re-plans and reports what moved and why
+ *
+ * Guarantees (verified independently by backend/evals):
+ *  - no two tasks overlap and every movable task respects the buffer
+ *  - movable tasks never run outside working hours or past their deadline
+ *  - deep-focus minutes never exceed the user's daily cap
+ *  - all times are computed in the user's timezone (servers run in UTC)
  */
 
-/**
- * Constants for score calculations
- */
+const {
+  normalizeTimeZone,
+  dateKey,
+  addDaysToKey,
+  parseDateKey,
+  zonedTimeToUtc,
+  minutesOfDay,
+  formatClock,
+} = require("../utils/timezone");
+
 const WEIGHTS = {
   urgency: 0.4, // How urgent based on deadline
   importance: 0.35, // How important based on priority/flexibility
   risk: 0.25, // Risk of missing deadline
 };
 
-const PRIORITY_VALUES = {
-  low: 1,
-  medium: 2,
-  high: 3,
-};
+const PRIORITY_VALUES = { low: 1, medium: 2, high: 3 };
+const ENERGY_VALUES = { "low-focus": 1, "deep-focus": 2 };
 
-const ENERGY_VALUES = {
-  "low-focus": 1,
-  "deep-focus": 2,
-};
+const DEFAULT_BUFFER = 15;
+const DEFAULT_DEEP_FOCUS_CAP = 240;
+const MAX_RANGE_DAYS = 14;
 
-/**
- * ========================================
- * SCORE CALCULATION FUNCTIONS
- * ========================================
- */
+/* ------------------------------------------------------------------ */
+/* Helpers                                                              */
+/* ------------------------------------------------------------------ */
 
-/**
- * Calculate urgency score based on time remaining and task duration
- * Score ranges from 0 to 100
- *
- * @param {Object} task - Task object
- * @returns {number} Urgency score (0-100)
- */
-function calculateUrgencyScore(task) {
-  const now = new Date();
+function parseTimeToMinutes(timeStr) {
+  const [hours, minutes] = String(timeStr).split(":").map(Number);
+  return hours * 60 + (minutes || 0);
+}
+
+function minutesToTime(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
+}
+
+/** Working window in minutes from midnight (falls back to 09:00-17:00). */
+function workWindow(user = {}) {
+  const start = parseTimeToMinutes(user.workingHours?.start || "09:00");
+  const end = parseTimeToMinutes(user.workingHours?.end || "17:00");
+  return end > start ? { start, end } : { start: 540, end: 1020 };
+}
+
+const toPlain = (task) => (task && typeof task.toObject === "function" ? task.toObject() : { ...task });
+const idOf = (task) => String(task._id ?? task.id);
+
+function resolveDayKey(date, timeZone) {
+  if (typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+  const d = date instanceof Date ? date : new Date(date);
+  if (isNaN(d)) throw new Error("Invalid date");
+  return dateKey(d, timeZone);
+}
+
+/* ------------------------------------------------------------------ */
+/* Score calculation                                                    */
+/* ------------------------------------------------------------------ */
+
+/** Urgency 0-100: how much of the remaining time the task consumes. */
+function calculateUrgencyScore(task, now = new Date()) {
   const deadline = new Date(task.deadline);
-  const minutesRemaining = Math.max(0, (deadline - now) / (1000 * 60));
+  const minutesRemaining = Math.max(0, (deadline - now) / 60000);
   const duration = task.estimatedDuration;
 
-  // If already past deadline, maximum urgency
-  if (minutesRemaining <= 0) {
-    return 100;
-  }
+  if (minutesRemaining <= 0) return 100;
 
-  // Ratio of task duration to remaining time
   const timeRatio = duration / minutesRemaining;
-
-  // Base urgency: higher ratio = more urgent
   let urgency;
-
-  if (timeRatio >= 1) {
-    // Not enough time left - critical urgency
-    urgency = 100;
-  } else if (timeRatio >= 0.5) {
-    // Tight deadline - high urgency (80-100)
-    urgency = 80 + (timeRatio - 0.5) * 40;
-  } else if (timeRatio >= 0.25) {
-    // Moderate deadline - medium urgency (50-80)
-    urgency = 50 + (timeRatio - 0.25) * 120;
-  } else if (timeRatio >= 0.1) {
-    // Comfortable deadline - low urgency (20-50)
-    urgency = 20 + (timeRatio - 0.1) * 200;
-  } else {
-    // Relaxed deadline - minimal urgency (0-20)
-    urgency = timeRatio * 200;
-  }
+  if (timeRatio >= 1) urgency = 100;
+  else if (timeRatio >= 0.5) urgency = 80 + (timeRatio - 0.5) * 40;
+  else if (timeRatio >= 0.25) urgency = 50 + (timeRatio - 0.25) * 120;
+  else if (timeRatio >= 0.1) urgency = 20 + (timeRatio - 0.1) * 200;
+  else urgency = timeRatio * 200;
 
   return Math.min(100, Math.max(0, Math.round(urgency)));
 }
 
-/**
- * Calculate importance score based on priority and flexibility
- * Score ranges from 0 to 100
- *
- * @param {Object} task - Task object
- * @returns {number} Importance score (0-100)
- */
+/** Importance 0-100: priority (0-60) + fixed bonus (30) + deep-focus bonus (10). */
 function calculateImportanceScore(task) {
   const priorityValue = PRIORITY_VALUES[task.priority] || 2;
-  const isFixed = task.flexibility === "fixed";
-
-  // Base importance from priority (scaled to 0-60)
   const priorityScore = ((priorityValue - 1) / 2) * 60;
-
-  // Fixed tasks get +30 importance
-  const flexibilityBonus = isFixed ? 30 : 0;
-
-  // Deep focus tasks get +10 importance (they need optimal time slots)
+  const flexibilityBonus = task.flexibility === "fixed" ? 30 : 0;
   const energyBonus = task.energyLevel === "deep-focus" ? 10 : 0;
-
-  const importance = priorityScore + flexibilityBonus + energyBonus;
-
-  return Math.min(100, Math.max(0, Math.round(importance)));
+  return Math.min(100, Math.max(0, Math.round(priorityScore + flexibilityBonus + energyBonus)));
 }
 
-/**
- * Calculate risk score - probability of missing deadline if task is delayed
- * Score ranges from 0 to 100
- *
- * @param {Object} task - Task object
- * @param {Object} userSettings - User's working hours settings
- * @returns {number} Risk score (0-100)
- */
-function calculateRiskScore(task, userSettings) {
-  const now = new Date();
+/** Risk 0-100: how little slack exists in the user's working time before the deadline. */
+function calculateRiskScore(task, userSettings = {}, now = new Date()) {
   const deadline = new Date(task.deadline);
-  const minutesRemaining = Math.max(0, (deadline - now) / (1000 * 60));
+  const minutesRemaining = Math.max(0, (deadline - now) / 60000);
   const duration = task.estimatedDuration;
 
-  // If already past deadline or can't complete in time
-  if (minutesRemaining <= 0 || minutesRemaining < duration) {
-    return 100;
-  }
+  if (minutesRemaining <= 0 || minutesRemaining < duration) return 100;
 
-  // Calculate available working minutes until deadline
-  const availableWorkMinutes = calculateAvailableWorkMinutes(
-    now,
-    deadline,
-    userSettings,
-  );
+  const availableWorkMinutes = calculateAvailableWorkMinutes(now, deadline, userSettings);
+  if (availableWorkMinutes < duration) return 100;
 
-  // If not enough working time available
-  if (availableWorkMinutes < duration) {
-    return 100;
-  }
-
-  // Calculate buffer ratio (how much slack time exists)
   const bufferRatio = (availableWorkMinutes - duration) / duration;
-
   let risk;
+  if (bufferRatio < 0.5) risk = 100 - bufferRatio * 60;
+  else if (bufferRatio < 1) risk = 70 - (bufferRatio - 0.5) * 60;
+  else if (bufferRatio < 2) risk = 40 - (bufferRatio - 1) * 20;
+  else risk = Math.max(0, 20 - (bufferRatio - 2) * 10);
 
-  if (bufferRatio < 0.5) {
-    // Very little buffer - high risk (70-100)
-    risk = 100 - bufferRatio * 60;
-  } else if (bufferRatio < 1) {
-    // Some buffer - medium risk (40-70)
-    risk = 70 - (bufferRatio - 0.5) * 60;
-  } else if (bufferRatio < 2) {
-    // Good buffer - low risk (20-40)
-    risk = 40 - (bufferRatio - 1) * 20;
-  } else {
-    // Plenty of buffer - minimal risk (0-20)
-    risk = Math.max(0, 20 - (bufferRatio - 2) * 10);
-  }
-
-  // Add risk for fixed tasks (less flexibility to reschedule)
-  if (task.flexibility === "fixed") {
-    risk += 10;
-  }
+  if (task.flexibility === "fixed") risk += 10;
 
   return Math.min(100, Math.max(0, Math.round(risk)));
 }
 
 /**
- * Calculate available working minutes between two dates
- *
- * @param {Date} start - Start date
- * @param {Date} end - End date
- * @param {Object} userSettings - User settings with working hours
- * @returns {number} Available working minutes
+ * Working minutes (in the user's timezone) between two instants.
+ * Counts only the overlap with each day's [workStart, workEnd] window.
  */
-function calculateAvailableWorkMinutes(start, end, userSettings) {
-  const workStart = parseTimeToMinutes(
-    userSettings.workingHours?.start || "09:00",
-  );
-  const workEnd = parseTimeToMinutes(userSettings.workingHours?.end || "17:00");
-  const dailyWorkMinutes = workEnd - workStart;
+function calculateAvailableWorkMinutes(start, end, userSettings = {}) {
+  const tz = normalizeTimeZone(userSettings.timezone);
+  const { start: ws, end: we } = workWindow(userSettings);
+  const startMs = new Date(start).getTime();
+  const endMs = new Date(end).getTime();
+  if (!(endMs > startMs)) return 0;
 
-  let totalMinutes = 0;
-  let current = new Date(start);
-  const endDate = new Date(end);
-
-  while (current < endDate) {
-    const currentMinutes = current.getHours() * 60 + current.getMinutes();
-    const dayEnd = new Date(current);
-    dayEnd.setHours(23, 59, 59, 999);
-
-    // If on the same day as end date
-    if (current.toDateString() === endDate.toDateString()) {
-      const endMinutes = Math.min(
-        workEnd,
-        endDate.getHours() * 60 + endDate.getMinutes(),
-      );
-      const startMinutes = Math.max(workStart, currentMinutes);
-      totalMinutes += Math.max(0, endMinutes - startMinutes);
-      break;
-    }
-
-    // Full working day calculation
-    if (currentMinutes < workEnd) {
-      const startMinutes = Math.max(workStart, currentMinutes);
-      totalMinutes += workEnd - startMinutes;
-    }
-
-    // Move to next day
-    current = new Date(current);
-    current.setDate(current.getDate() + 1);
-    current.setHours(0, 0, 0, 0);
+  let key = dateKey(new Date(startMs), tz);
+  const lastKey = dateKey(new Date(endMs), tz);
+  let totalMs = 0;
+  for (let guard = 0; key <= lastKey && guard < 800; guard++) {
+    const { year, month, day } = parseDateKey(key);
+    const winStart = zonedTimeToUtc(year, month, day, ws, tz).getTime();
+    const winEnd = zonedTimeToUtc(year, month, day, we, tz).getTime();
+    const lo = Math.max(winStart, startMs);
+    const hi = Math.min(winEnd, endMs);
+    if (hi > lo) totalMs += hi - lo;
+    key = addDaysToKey(key, 1);
   }
-
-  return totalMinutes;
+  return Math.round(totalMs / 60000);
 }
 
-/**
- * Calculate final scheduling score combining all factors
- *
- * @param {Object} task - Task object
- * @param {Object} userSettings - User settings
- * @returns {Object} All scores and final score
- */
-function calculateAllScores(task, userSettings) {
-  const urgencyScore = calculateUrgencyScore(task);
+function calculateAllScores(task, userSettings, now = new Date()) {
+  const urgencyScore = calculateUrgencyScore(task, now);
   const importanceScore = calculateImportanceScore(task);
-  const riskScore = calculateRiskScore(task, userSettings);
+  const riskScore = calculateRiskScore(task, userSettings, now);
 
   const finalScore = Math.round(
     urgencyScore * WEIGHTS.urgency +
@@ -240,367 +173,407 @@ function calculateAllScores(task, userSettings) {
   };
 }
 
-/**
- * ========================================
- * SCHEDULE GENERATION
- * ========================================
- */
+/* ------------------------------------------------------------------ */
+/* Slot search                                                          */
+/* ------------------------------------------------------------------ */
 
 /**
- * Generate a daily schedule for the user
+ * First-fit search for a free window.
  *
- * @param {Array} tasks - Array of task objects
- * @param {Object} user - User object with settings
- * @param {Date} date - Date to generate schedule for
- * @returns {Object} Generated schedule with explanations
+ * @param {number} startFrom   earliest start (minutes from midnight)
+ * @param {number} workEnd     latest allowed END (work end or earlier deadline)
+ * @param {number} duration    minutes needed
+ * @param {number} buffer      required gap to neighbouring tasks
+ * @param {Array}  occupiedSlots [{start,end}]
+ * @param {number|null} preferAfter optional: try starting here first (energy-aware placement)
  */
-function generateDailySchedule(tasks, user, date = new Date()) {
-  const targetDate = new Date(date);
-  targetDate.setHours(0, 0, 0, 0);
+function findAvailableSlot(startFrom, workEnd, duration, buffer, occupiedSlots, preferAfter = null) {
+  const search = (from) => {
+    let candidate = from;
+    for (let guard = 0; candidate + duration <= workEnd && guard < 10000; guard++) {
+      const candidateEnd = candidate + duration;
+      let conflict = false;
+      for (const slot of occupiedSlots) {
+        if (candidate < slot.end + buffer && candidateEnd > slot.start - buffer) {
+          candidate = slot.end + buffer; // jump past the blocker
+          conflict = true;
+          break;
+        }
+      }
+      if (!conflict) return { start: candidate, end: candidateEnd };
+    }
+    return null;
+  };
 
-  const scheduleDate = new Date(targetDate);
+  if (preferAfter !== null && preferAfter > startFrom) {
+    const preferred = search(preferAfter);
+    if (preferred) return preferred;
+  }
+  return search(startFrom);
+}
 
-  // Get user settings
-  const workStart = parseTimeToMinutes(user.workingHours?.start || "09:00");
-  const workEnd = parseTimeToMinutes(user.workingHours?.end || "17:00");
-  const maxDeepFocus = user.maxDeepFocusMinutes || 240;
-  const bufferMinutes = user.bufferMinutes || 15;
+/* ------------------------------------------------------------------ */
+/* Explanations                                                         */
+/* ------------------------------------------------------------------ */
 
-  // Filter tasks for the day (not completed, deadline >= today)
-  const pendingTasks = tasks.filter((task) => {
-    if (task.isCompleted) return false;
+/** Ordered list of short reasons for a scored task. */
+function buildReasons(task, now = new Date()) {
+  const scores = task.scores || {};
+  const reasons = [];
+
+  if (task.priority === "high") reasons.push("high priority");
+  else if (task.priority === "medium") reasons.push("medium priority");
+  else if (task.priority === "low") reasons.push("low priority");
+
+  const msUntil = new Date(task.deadline) - now;
+  if (msUntil <= 0) {
+    reasons.push("is overdue");
+  } else {
+    const minutes = Math.round(msUntil / 60000);
+    const hours = Math.round(msUntil / 3600000);
+    if (minutes < 60) reasons.push(`deadline in ${minutes} minutes`);
+    else if (hours <= 24) reasons.push(`deadline in ${hours} hours`);
+    else {
+      const days = Math.round(hours / 24);
+      reasons.push(`deadline in ${days} day${days > 1 ? "s" : ""}`);
+    }
+  }
+
+  if (task.plan?.mustDoToday && msUntil > 0) {
+    reasons.push("cannot be postponed (not enough working time left before the deadline)");
+  }
+  if (task.energyLevel === "deep-focus") reasons.push("requires deep focus");
+  if (task.flexibility === "fixed") reasons.push("has fixed time constraint");
+  else if (scores.finalScore > 70) reasons.push("limited scheduling flexibility");
+
+  if (scores.riskScore > 70) reasons.push("high risk of missing deadline if delayed");
+  else if (scores.riskScore > 40) reasons.push("moderate deadline risk");
+
+  return reasons;
+}
+
+/** Human-readable explanation for a placed task. */
+function generateExplanation(task, scheduledTime, user = {}, now = new Date()) {
+  const tz = normalizeTimeZone(user.timezone);
+  const scores = task.scores;
+  const start = new Date(scheduledTime);
+  const end = new Date(start.getTime() + task.estimatedDuration * 60000);
+
+  const lines = [];
+  const reasons = buildReasons(task, now);
+  let head = `Scheduled at ${formatClock(start, tz)}–${formatClock(end, tz)}`;
+  if (reasons.length) head += ` because the task has ${reasons.join(", ")}.`;
+  lines.push(head);
+
+  lines.push("");
+  lines.push(`📊 Scheduling Score: ${scores.finalScore}/100`);
+  lines.push(`• Urgency: ${scores.urgencyScore}/100`);
+  lines.push(`• Importance: ${scores.importanceScore}/100`);
+  lines.push(`• Risk: ${scores.riskScore}/100`);
+  return lines.join("\n");
+}
+
+/* ------------------------------------------------------------------ */
+/* Daily schedule                                                       */
+/* ------------------------------------------------------------------ */
+
+const byScoreThenDeadline = (a, b) =>
+  b.scores.finalScore - a.scores.finalScore ||
+  new Date(a.deadline) - new Date(b.deadline) ||
+  b.estimatedDuration - a.estimatedDuration ||
+  idOf(a).localeCompare(idOf(b));
+
+/**
+ * Generate one day's plan.
+ *
+ * @param {Array}  tasks
+ * @param {Object} user     { workingHours, maxDeepFocusMinutes, bufferMinutes, timezone }
+ * @param {Date|string} date  a Date, or "YYYY-MM-DD" in the user's timezone
+ * @param {Object} [options]  { now: Date, excludeIds: Set<string> }
+ */
+function generateDailySchedule(tasks, user, date = new Date(), options = {}) {
+  const now = options.now ? new Date(options.now) : new Date();
+  const tz = normalizeTimeZone(user.timezone);
+  const dayKey = resolveDayKey(date, tz);
+  const { year, month, day } = parseDateKey(dayKey);
+  const at = (minutes) => zonedTimeToUtc(year, month, day, minutes, tz);
+  const dayStart = at(0);
+  const dayEnd = at(1440);
+  const exclude = options.excludeIds || new Set();
+
+  const { start: workStart, end: workEnd } = workWindow(user);
+  const maxDeepFocus = Number.isFinite(user.maxDeepFocusMinutes) ? user.maxDeepFocusMinutes : DEFAULT_DEEP_FOCUS_CAP;
+  const buffer = Number.isFinite(user.bufferMinutes) ? user.bufferMinutes : DEFAULT_BUFFER;
+
+  const isToday = dayKey === dateKey(now, tz);
+  const earliest = isToday
+    ? Math.max(workStart, Math.ceil(minutesOfDay(now, tz) / 5) * 5)
+    : workStart;
+  const peakEnd = workStart + Math.floor((workEnd - workStart) / 2);
+
+  // ---- classify tasks relevant to this day
+  const movable = [];
+  const fixedToday = [];
+  const fixedNoStart = [];
+  for (const raw of tasks) {
+    if (raw.isCompleted || exclude.has(idOf(raw))) continue;
+    const task = toPlain(raw);
     const deadline = new Date(task.deadline);
-    return deadline >= targetDate;
-  });
 
-  // Calculate scores for all tasks
-  const scoredTasks = pendingTasks.map((task) => ({
-    ...(task.toObject ? task.toObject() : task),
-    scores: calculateAllScores(task, user),
-  }));
+    if (task.flexibility === "fixed") {
+      if (task.scheduledStart) {
+        const s = new Date(task.scheduledStart);
+        if (s >= dayStart && s < dayEnd) fixedToday.push(task);
+      } else if (deadline >= dayStart) {
+        fixedNoStart.push(task);
+      }
+      continue;
+    }
+    const overdue = deadline < now;
+    if (deadline >= dayStart || (isToday && overdue)) movable.push(task);
+  }
 
-  // Separate fixed and movable tasks
-  const fixedTasks = scoredTasks.filter((t) => t.flexibility === "fixed");
-  const movableTasks = scoredTasks.filter((t) => t.flexibility === "movable");
+  const score = (t) => ({ ...t, scores: calculateAllScores(t, user, now) });
 
-  // Sort movable tasks by final score (highest first)
-  movableTasks.sort((a, b) => b.scores.finalScore - a.scores.finalScore);
+  // A task "must be done today" when no later working time can absorb it
+  // (deadline is today / already passed, or the working time between the end
+  // of today and the deadline is shorter than the task). Those are placed
+  // first, earliest-deadline-first, so a higher-scoring but postponable task
+  // can never push them past their deadline.
+  const planMeta = (t) => {
+    const deadline = new Date(t.deadline);
+    const overdue = deadline < now;
+    const deadlineToday = !overdue && deadline < dayEnd;
+    const latestEnd = deadlineToday ? Math.min(workEnd, minutesOfDay(deadline, tz)) : workEnd;
+    const laterCapacity = deadline >= dayEnd ? calculateAvailableWorkMinutes(dayEnd, deadline, user) : 0;
+    const mustDoToday = overdue || deadlineToday || laterCapacity < t.estimatedDuration + buffer;
+    return { overdue, deadlineToday, latestEnd, mustDoToday };
+  };
+  const scoredMovable = movable
+    .map((t) => {
+      const scored = score(t);
+      return { ...scored, plan: planMeta(scored) };
+    })
+    .sort((a, b) => {
+      if (a.plan.mustDoToday !== b.plan.mustDoToday) return a.plan.mustDoToday ? -1 : 1;
+      if (a.plan.mustDoToday && a.plan.latestEnd !== b.plan.latestEnd) {
+        return a.plan.latestEnd - b.plan.latestEnd;
+      }
+      return byScoreThenDeadline(a, b);
+    });
+  const scoredFixed = fixedToday.map(score);
 
-  // Initialize schedule
   const schedule = {
-    date: targetDate.toISOString().split("T")[0],
-    workingHours: {
-      start: minutesToTime(workStart),
-      end: minutesToTime(workEnd),
-    },
+    date: dayKey,
+    timezone: tz,
+    workingHours: { start: minutesToTime(workStart), end: minutesToTime(workEnd) },
     slots: [],
     unscheduled: [],
+    conflicts: [],
     stats: {
-      totalTasks: pendingTasks.length,
+      totalTasks: scoredMovable.length + scoredFixed.length + fixedNoStart.length,
       scheduledTasks: 0,
       totalScheduledMinutes: 0,
       deepFocusMinutes: 0,
       utilizationPercent: 0,
+      overdueTasks: 0,
     },
   };
 
-  // Track time slots and deep focus usage
-  let currentTime = workStart;
+  const occupied = [];
   let deepFocusUsed = 0;
-  const occupiedSlots = [];
 
-  // First, place fixed tasks
-  for (const task of fixedTasks) {
-    if (task.scheduledStart) {
-      const taskDate = new Date(task.scheduledStart);
-      if (taskDate.toDateString() === scheduleDate.toDateString()) {
-        const startMinutes = taskDate.getHours() * 60 + taskDate.getMinutes();
-        const endMinutes = startMinutes + task.estimatedDuration;
+  const addSlot = (task, startDate, endDate, extra = {}) => {
+    schedule.slots.push({
+      taskId: task._id,
+      task: {
+        _id: task._id,
+        id: task._id,
+        title: task.title,
+        description: task.description,
+        priority: task.priority,
+        energyLevel: task.energyLevel,
+        flexibility: task.flexibility,
+        deadline: task.deadline,
+        estimatedDuration: task.estimatedDuration,
+      },
+      scheduledStart: startDate.toISOString(),
+      scheduledEnd: endDate.toISOString(),
+      durationMinutes: task.estimatedDuration,
+      scores: task.scores,
+      reasons: buildReasons(task, now),
+      explanation: generateExplanation(task, startDate, user, now),
+      overdue: new Date(task.deadline) < now,
+      mustDoToday: !!task.plan?.mustDoToday,
+      ...extra,
+    });
+    schedule.stats.scheduledTasks++;
+    schedule.stats.totalScheduledMinutes += task.estimatedDuration;
+    if (new Date(task.deadline) < now) schedule.stats.overdueTasks++;
+    if (task.energyLevel === "deep-focus") deepFocusUsed += task.estimatedDuration;
+  };
 
-        occupiedSlots.push({
-          start: startMinutes,
-          end: endMinutes,
-          task: task,
+  // ---- 1. fixed tasks are honoured exactly where the user put them
+  for (const task of scoredFixed.sort((a, b) => new Date(a.scheduledStart) - new Date(b.scheduledStart))) {
+    const s = new Date(task.scheduledStart);
+    const e = new Date(s.getTime() + task.estimatedDuration * 60000);
+    const startMin = minutesOfDay(s, tz);
+    const slot = { start: startMin, end: startMin + task.estimatedDuration, task };
+
+    for (const other of occupied) {
+      if (slot.start < other.end && slot.end > other.start) {
+        schedule.conflicts.push({
+          type: "fixed-overlap",
+          taskIds: [idOf(other.task), idOf(task)],
+          message: `Fixed tasks "${other.task.title}" and "${task.title}" overlap`,
         });
       }
     }
+    occupied.push(slot);
+    addSlot(task, s, e, { fixed: true });
   }
 
-  // Sort occupied slots by start time
-  occupiedSlots.sort((a, b) => a.start - b.start);
+  for (const task of fixedNoStart) {
+    schedule.unscheduled.push({
+      taskId: task._id,
+      task: { ...task, scores: calculateAllScores(task, user, now) },
+      reason: "Fixed-time task has no start time — set one so it can be placed",
+      permanent: true,
+    });
+  }
 
-  // Place movable tasks in available slots
-  for (const task of movableTasks) {
-    // Check deep focus capacity
-    if (task.energyLevel === "deep-focus") {
-      if (deepFocusUsed + task.estimatedDuration > maxDeepFocus) {
-        schedule.unscheduled.push({
-          task: task,
-          reason: `Exceeds daily deep-focus capacity (${maxDeepFocus} minutes)`,
-        });
-        continue;
-      }
-    }
+  // ---- 2. movable tasks, highest score first
+  let pendingDeepDemand = scoredMovable
+    .filter((t) => t.energyLevel === "deep-focus")
+    .reduce((sum, t) => sum + t.estimatedDuration, 0);
 
-    // Find next available slot
-    const slot = findAvailableSlot(
-      currentTime,
-      workEnd,
-      task.estimatedDuration,
-      bufferMinutes,
-      occupiedSlots,
-    );
+  for (const task of scoredMovable) {
+    const isDeep = task.energyLevel === "deep-focus";
+    if (isDeep) pendingDeepDemand -= task.estimatedDuration;
 
-    if (slot) {
-      // Create scheduled time
-      const scheduledStart = new Date(scheduleDate);
-      scheduledStart.setHours(
-        Math.floor(slot.start / 60),
-        slot.start % 60,
-        0,
-        0,
-      );
-
-      const scheduledEnd = new Date(scheduleDate);
-      scheduledEnd.setHours(Math.floor(slot.end / 60), slot.end % 60, 0, 0);
-
-      // Generate explanation
-      const explanation = generateExplanation(task, scheduledStart, user);
-
-      // Add to schedule
-      schedule.slots.push({
-        taskId: task._id,
-        task: {
-          id: task._id,
-          title: task.title,
-          description: task.description,
-          priority: task.priority,
-          energyLevel: task.energyLevel,
-          flexibility: task.flexibility,
-          deadline: task.deadline,
-          estimatedDuration: task.estimatedDuration,
-        },
-        scheduledStart: scheduledStart.toISOString(),
-        scheduledEnd: scheduledEnd.toISOString(),
-        durationMinutes: task.estimatedDuration,
-        scores: task.scores,
-        explanation: explanation,
-      });
-
-      // Update tracking
-      occupiedSlots.push({ start: slot.start, end: slot.end, task });
-      occupiedSlots.sort((a, b) => a.start - b.start);
-
-      if (task.energyLevel === "deep-focus") {
-        deepFocusUsed += task.estimatedDuration;
-      }
-
-      schedule.stats.scheduledTasks++;
-      schedule.stats.totalScheduledMinutes += task.estimatedDuration;
-    } else {
+    if (isDeep && deepFocusUsed + task.estimatedDuration > maxDeepFocus) {
       schedule.unscheduled.push({
-        task: task,
-        reason: "No available time slot within working hours",
+        taskId: task._id,
+        task,
+        reason: `Exceeds daily deep-focus capacity (${maxDeepFocus} minutes)`,
       });
+      continue;
     }
+
+    const deadline = new Date(task.deadline);
+    const { latestEnd, deadlineToday, mustDoToday } = task.plan;
+
+    // Energy-aware: keep the first half of the day free for deep-focus work
+    // while deep tasks are still waiting, unless the task cannot wait.
+    const preferAfter = !isDeep && pendingDeepDemand > 0 && !mustDoToday ? peakEnd : null;
+
+    const slot = findAvailableSlot(earliest, latestEnd, task.estimatedDuration, buffer, occupied, preferAfter);
+
+    if (!slot) {
+      let reason = "No available time slot within working hours";
+      if (earliest >= workEnd) reason = "Today's working hours are over";
+      else if (deadlineToday && latestEnd < workEnd) {
+        reason = `Not enough free time before its ${formatClock(deadline, tz)} deadline`;
+      }
+      schedule.unscheduled.push({ taskId: task._id, task, reason });
+      continue;
+    }
+
+    occupied.push({ start: slot.start, end: slot.end, task });
+    addSlot(task, at(slot.start), at(slot.end));
   }
 
-  // Calculate stats
-  const totalWorkMinutes = workEnd - workStart;
+  // ---- stats & ordering
   schedule.stats.deepFocusMinutes = deepFocusUsed;
   schedule.stats.utilizationPercent = Math.round(
-    (schedule.stats.totalScheduledMinutes / totalWorkMinutes) * 100,
+    (schedule.stats.totalScheduledMinutes / (workEnd - workStart)) * 100,
   );
-
-  // Sort slots by start time
-  schedule.slots.sort(
-    (a, b) => new Date(a.scheduledStart) - new Date(b.scheduledStart),
-  );
-
+  schedule.slots.sort((a, b) => new Date(a.scheduledStart) - new Date(b.scheduledStart));
   return schedule;
 }
 
 /**
- * Find an available time slot for a task
- *
- * @param {number} startFrom - Minimum start time in minutes
- * @param {number} workEnd - End of work day in minutes
- * @param {number} duration - Required duration in minutes
- * @param {number} buffer - Buffer time between tasks
- * @param {Array} occupiedSlots - Already occupied time slots
- * @returns {Object|null} Available slot or null
+ * Multi-day plan. A task placed on an earlier day is not planned again on a
+ * later one; tasks that did not fit carry over to the next day.
  */
-function findAvailableSlot(
-  startFrom,
-  workEnd,
-  duration,
-  buffer,
-  occupiedSlots,
-) {
-  let candidateStart = startFrom;
+function generateRangeSchedule(tasks, user, startDate, endDate, options = {}) {
+  const tz = normalizeTimeZone(user.timezone);
+  const startKey = resolveDayKey(startDate, tz);
+  const endKey = resolveDayKey(endDate, tz);
+  const placed = new Set(options.excludeIds || []);
+  const schedules = [];
 
-  while (candidateStart + duration <= workEnd) {
-    const candidateEnd = candidateStart + duration;
-
-    // Check for conflicts with occupied slots
-    let conflict = false;
-    for (const slot of occupiedSlots) {
-      // Check if candidate overlaps with this slot (including buffer)
-      const slotStartWithBuffer = slot.start - buffer;
-      const slotEndWithBuffer = slot.end + buffer;
-
-      if (
-        candidateStart < slotEndWithBuffer &&
-        candidateEnd > slotStartWithBuffer
-      ) {
-        // Conflict found, move candidate to after this slot
-        candidateStart = slot.end + buffer;
-        conflict = true;
-        break;
-      }
-    }
-
-    if (!conflict) {
-      return { start: candidateStart, end: candidateEnd };
-    }
+  let key = startKey;
+  for (let i = 0; key <= endKey && i < MAX_RANGE_DAYS; i++) {
+    const day = generateDailySchedule(tasks, user, key, { ...options, excludeIds: placed });
+    day.slots.forEach((s) => placed.add(String(s.taskId)));
+    day.unscheduled.filter((u) => u.permanent).forEach((u) => placed.add(String(u.taskId)));
+    schedules.push(day);
+    key = addDaysToKey(key, 1);
   }
-
-  return null;
+  return schedules;
 }
 
-/**
- * ========================================
- * EXPLANATION GENERATION
- * ========================================
- */
+/* ------------------------------------------------------------------ */
+/* Rescheduling                                                         */
+/* ------------------------------------------------------------------ */
 
 /**
- * Generate a human-readable explanation for why a task was scheduled
- *
- * @param {Object} task - Task with scores
- * @param {Date} scheduledTime - When the task is scheduled
- * @param {Object} user - User settings
- * @returns {string} Human-readable explanation
- */
-function generateExplanation(task, scheduledTime, user) {
-  const parts = [];
-  const scores = task.scores;
-
-  // Format time
-  const timeStr = scheduledTime.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-
-  const endTime = new Date(
-    scheduledTime.getTime() + task.estimatedDuration * 60000,
-  );
-  const endTimeStr = endTime.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-
-  parts.push(`Scheduled at ${timeStr}–${endTimeStr}`);
-
-  // Build reason list
-  const reasons = [];
-
-  // Priority explanation
-  if (task.priority === "high") {
-    reasons.push("high priority");
-  } else if (task.priority === "medium") {
-    reasons.push("medium priority");
-  }
-
-  // Urgency explanation
-  const deadline = new Date(task.deadline);
-  const hoursUntilDeadline = Math.round(
-    (deadline - new Date()) / (1000 * 60 * 60),
-  );
-
-  if (hoursUntilDeadline <= 24) {
-    reasons.push(`deadline in ${hoursUntilDeadline} hours`);
-  } else {
-    const daysUntilDeadline = Math.round(hoursUntilDeadline / 24);
-    reasons.push(
-      `deadline in ${daysUntilDeadline} day${daysUntilDeadline > 1 ? "s" : ""}`,
-    );
-  }
-
-  // Energy level explanation
-  if (task.energyLevel === "deep-focus") {
-    reasons.push("requires deep focus");
-  }
-
-  // Flexibility explanation
-  if (task.flexibility === "fixed") {
-    reasons.push("has fixed time constraint");
-  } else if (scores.finalScore > 70) {
-    reasons.push("limited scheduling flexibility");
-  }
-
-  // Risk explanation
-  if (scores.riskScore > 70) {
-    reasons.push("high risk of missing deadline if delayed");
-  } else if (scores.riskScore > 40) {
-    reasons.push("moderate deadline risk");
-  }
-
-  // Combine reasons
-  if (reasons.length > 0) {
-    parts.push(`because the task has ${reasons.join(", ")}.`);
-  }
-
-  // Add score summary
-  parts.push(`\n\n📊 Scheduling Score: ${scores.finalScore}/100`);
-  parts.push(`• Urgency: ${scores.urgencyScore}/100`);
-  parts.push(`• Importance: ${scores.importanceScore}/100`);
-  parts.push(`• Risk: ${scores.riskScore}/100`);
-
-  return parts.join(" ");
-}
-
-/**
- * ========================================
- * RESCHEDULING
- * ========================================
- */
-
-/**
- * Reschedule remaining tasks when a task is incomplete or takes longer
- *
- * @param {Array} tasks - All tasks
- * @param {Object} user - User settings
- * @param {Object} options - Rescheduling options
- * @returns {Object} New schedule with change explanations
+ * Re-plan and explain what changed relative to the previously stored slots.
  */
 function reschedule(tasks, user, options = {}) {
-  const { incompleteTaskId, actualDuration, date = new Date() } = options;
-
-  // Get the current schedule
-  const newSchedule = generateDailySchedule(tasks, user, date);
-
-  // Track changes
+  const { incompleteTaskId, actualDuration, date = new Date(), now } = options;
+  const tz = normalizeTimeZone(user.timezone);
+  const newSchedule = generateDailySchedule(tasks, user, date, { now });
   const changes = [];
 
   if (incompleteTaskId) {
-    const incompleteTask = tasks.find(
-      (t) => t._id?.toString() === incompleteTaskId?.toString(),
-    );
-
-    if (incompleteTask && actualDuration) {
-      const overrun = actualDuration - incompleteTask.estimatedDuration;
+    const task = tasks.find((t) => String(t._id) === String(incompleteTaskId));
+    if (task && actualDuration) {
+      const overrun = actualDuration - task.estimatedDuration;
       if (overrun > 0) {
         changes.push({
           type: "overrun",
           taskId: incompleteTaskId,
-          taskTitle: incompleteTask.title,
+          taskTitle: task.title,
           overrunMinutes: overrun,
-          explanation: `Task "${incompleteTask.title}" took ${overrun} minutes longer than estimated, causing schedule adjustment.`,
+          explanation: `Task "${task.title}" took ${overrun} minutes longer than estimated, causing schedule adjustment.`,
         });
       }
+    }
+  }
+
+  const previous = new Map();
+  for (const t of tasks) {
+    if (t.scheduledStart && !t.isCompleted) previous.set(idOf(t), new Date(t.scheduledStart));
+  }
+  const dayKey = newSchedule.date;
+  const placedIds = new Set();
+
+  for (const slot of newSchedule.slots) {
+    const id = String(slot.taskId);
+    placedIds.add(id);
+    const before = previous.get(id);
+    if (before && dateKey(before, tz) === dayKey && before.getTime() !== new Date(slot.scheduledStart).getTime()) {
+      changes.push({
+        type: "moved",
+        taskId: slot.taskId,
+        taskTitle: slot.task.title,
+        from: before.toISOString(),
+        to: slot.scheduledStart,
+        explanation: `"${slot.task.title}" moved from ${formatClock(before, tz)} to ${formatClock(slot.scheduledStart, tz)}.`,
+      });
+    }
+  }
+  for (const item of newSchedule.unscheduled) {
+    const before = previous.get(String(item.taskId));
+    if (before && dateKey(before, tz) === dayKey) {
+      changes.push({
+        type: "unscheduled",
+        taskId: item.taskId,
+        taskTitle: item.task.title,
+        explanation: `"${item.task.title}" no longer fits today: ${item.reason}.`,
+      });
     }
   }
 
@@ -614,39 +587,6 @@ function reschedule(tasks, user, options = {}) {
   };
 }
 
-/**
- * ========================================
- * UTILITY FUNCTIONS
- * ========================================
- */
-
-/**
- * Parse time string to minutes from midnight
- * @param {string} timeStr - Time in HH:MM format
- * @returns {number} Minutes from midnight
- */
-function parseTimeToMinutes(timeStr) {
-  const [hours, minutes] = timeStr.split(":").map(Number);
-  return hours * 60 + minutes;
-}
-
-/**
- * Convert minutes from midnight to time string
- * @param {number} minutes - Minutes from midnight
- * @returns {string} Time in HH:MM format
- */
-function minutesToTime(minutes) {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}`;
-}
-
-/**
- * ========================================
- * MODULE EXPORTS
- * ========================================
- */
-
 module.exports = {
   // Score calculations
   calculateUrgencyScore,
@@ -656,10 +596,12 @@ module.exports = {
 
   // Schedule generation
   generateDailySchedule,
+  generateRangeSchedule,
   findAvailableSlot,
 
   // Explanations
   generateExplanation,
+  buildReasons,
 
   // Rescheduling
   reschedule,
@@ -668,8 +610,11 @@ module.exports = {
   parseTimeToMinutes,
   minutesToTime,
   calculateAvailableWorkMinutes,
+  workWindow,
+  resolveDayKey,
 
   // Constants (for testing)
   WEIGHTS,
   PRIORITY_VALUES,
+  ENERGY_VALUES,
 };

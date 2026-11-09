@@ -1,0 +1,287 @@
+{
+  "generatedAt": "2026-11-09T06:40:58.868Z",
+  "referenceNow": "2026-11-09T04:30:00.000Z",
+  "timezone": "Asia/Kolkata",
+  "sets": {
+    "standard": {
+      "cases": 30,
+      "heuristic": {
+        "fields": {
+          "title": {
+            "right": 30,
+            "total": 30
+          },
+          "duration": {
+            "right": 29,
+            "total": 29
+          },
+          "priority": {
+            "right": 30,
+            "total": 30
+          },
+          "energy": {
+            "right": 27,
+            "total": 27
+          },
+          "flexibility": {
+            "right": 21,
+            "total": 24
+          },
+          "date": {
+            "right": 27,
+            "total": 28
+          },
+          "time": {
+            "right": 20,
+            "total": 20
+          },
+          "start": {
+            "right": 2,
+            "total": 5
+          }
+        },
+        "allCorrect": 26,
+        "total": 30
+      },
+      "parsing": [
+        {
+          "model": "openai/gpt-oss-120b",
+          "fields": {
+            "title": {
+              "right": 30,
+              "total": 30
+            },
+            "duration": {
+              "right": 29,
+              "total": 29
+            },
+            "priority": {
+              "right": 30,
+              "total": 30
+            },
+            "energy": {
+              "right": 25,
+              "total": 27
+            },
+            "flexibility": {
+              "right": 24,
+              "total": 24
+            },
+            "date": {
+              "right": 28,
+              "total": 28
+            },
+            "time": {
+              "right": 20,
+              "total": 20
+            },
+            "start": {
+              "right": 5,
+              "total": 5
+            }
+          },
+          "allCorrect": 28,
+          "total": 30,
+          "groqServed": 30,
+          "fellBack": 0,
+          "fallbackReasons": [],
+          "latencyP50": 2070,
+          "latencyP95": 5309,
+          "tokensAvg": 678,
+          "failures": [
+            {
+              "text": "Prepare slides for the client pitch by Wednesday noon, 2 hours, important",
+              "wrong": [
+                "energy"
+              ],
+              "got": {
+                "title": "Prepare slides for client pitch",
+                "min": 120,
+                "pr": "high",
+                "en": "deep-focus",
+                "fx": "movable",
+                "deadline": "2026-11-11 12:00",
+                "start": null
+              }
+            },
+            {
+              "text": "Update the project README, 25 mins, due Tuesday",
+              "wrong": [
+                "energy"
+              ],
+              "got": {
+                "title": "Update project README",
+                "min": 25,
+                "pr": "medium",
+                "en": "deep-focus",
+                "fx": "movable",
+                "deadline": "2026-11-10 17:00",
+                "start": null
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "holdout": {
+      "cases": 16,
+      "heuristic": {
+        "fields": {
+          "title": {
+            "right": 16,
+            "total": 16
+          },
+          "duration": {
+            "right": 14,
+            "total": 16
+          },
+          "priority": {
+            "right": 11,
+            "total": 12
+          },
+          "date": {
+            "right": 10,
+            "total": 16
+          },
+          "flexibility": {
+            "right": 0,
+            "total": 3
+          },
+          "time": {
+            "right": 3,
+            "total": 6
+          },
+          "start": {
+            "right": 0,
+            "total": 2
+          },
+          "energy": {
+            "right": 3,
+            "total": 3
+          }
+        },
+        "allCorrect": 5,
+        "total": 16
+      },
+      "parsing": [
+        {
+          "model": "openai/gpt-oss-120b",
+          "fields": {
+            "title": {
+              "right": 16,
+              "total": 16
+            },
+            "duration": {
+              "right": 16,
+              "total": 16
+            },
+            "priority": {
+              "right": 12,
+              "total": 12
+            },
+            "date": {
+              "right": 15,
+              "total": 16
+            },
+            "flexibility": {
+              "right": 3,
+              "total": 3
+            },
+            "time": {
+              "right": 6,
+              "total": 6
+            },
+            "start": {
+              "right": 2,
+              "total": 2
+            },
+            "energy": {
+              "right": 3,
+              "total": 3
+            }
+          },
+          "allCorrect": 15,
+          "total": 16,
+          "groqServed": 16,
+          "fellBack": 0,
+          "fallbackReasons": [],
+          "latencyP50": 3016,
+          "latencyP95": 6761,
+          "tokensAvg": 674,
+          "failures": [
+            {
+              "text": "email the client back asap, 5 min",
+              "wrong": [
+                "date"
+              ],
+              "got": {
+                "title": "Email client",
+                "min": 5,
+                "pr": "high",
+                "en": "low-focus",
+                "fx": "movable",
+                "deadline": "2026-11-10 17:00",
+                "start": null
+              }
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "narratives": {
+    "total": 12,
+    "groqUsed": 12,
+    "rejectedUngrounded": 0,
+    "fellBackOther": 0,
+    "avgWords": 51,
+    "latencyP50": 561,
+    "samples": [
+      "Task 0 is high priority, low-focus, movable, 15 minutes, due 2026‑11‑10 12:45 PM, 28.3 hours until deadline, not overdue. Its final score of 22 is driven mainly by the importance weight (60) and urgency weight (2). The risk score is 0, so importance dominates the overall score.",
+      "Task 1 is scheduled now because its urgency score of 64, weighted 40%, drives the final score of 45. The medium priority, low-focus energy level, and movable flexibility allow it to fit within the 60‑minute estimate before the 11:15 AM deadline, with 2.8 hours remaining. The risk score of 35 and importance of 30 are lower contributors.",
+      "Task 2 is scheduled now because its urgency score of 51, weighted 40%, is the highest driver of the final score of 38. The medium priority and deep-focus energy level fit the 90‑minute duration, and the 5.8 hours until the 2026‑11‑09 02:15 PM deadline keep it movable."
+    ]
+  },
+  "insights": [
+    {
+      "scenario": "8 tasks",
+      "source": "groq",
+      "suggestions": 3,
+      "groqWorded": 3,
+      "briefing": "Today you have 5 scheduled tasks at 53% utilization, 0 deep focus minutes, 3 unscheduled tasks, and 8 pending items."
+    },
+    {
+      "scenario": "15 tasks",
+      "source": "groq",
+      "suggestions": 5,
+      "groqWorded": 5,
+      "briefing": "You have 7 tasks scheduled, 66% utilization, 30 minutes deep focus, 8 unscheduled, 15 pending, 2 overdue."
+    },
+    {
+      "scenario": "25 tasks",
+      "source": "groq",
+      "suggestions": 5,
+      "groqWorded": 5,
+      "briefing": "Today you’re at 78% utilization with six scheduled tasks, a heavy backlog, and several overdue and urgent items to address."
+    },
+    {
+      "scenario": "5 tasks",
+      "source": "groq",
+      "suggestions": 2,
+      "groqWorded": 2,
+      "briefing": "You have 5 tasks today with 56% utilization and 60 minutes deep focus; no overdue tasks and one fixed‑time commitment."
+    }
+  ],
+  "groqMetrics": {
+    "requests": 62,
+    "successes": 62,
+    "failures": 0,
+    "retries": 39,
+    "promptTokens": 27330,
+    "completionTokens": 12053,
+    "totalLatencyMs": 148900,
+    "lastError": null,
+    "lastErrorAt": null,
+    "avgLatencyMs": 2402
+  }
+}

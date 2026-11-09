@@ -5,6 +5,10 @@
 
 import React from "react";
 import { format, addDays, subDays, isToday } from "date-fns";
+import {
+  minutesOfDayInTimeZone,
+  formatTimeInTimeZone,
+} from "../utils/dateHelpers";
 
 const Calendar = ({
   schedule,
@@ -13,15 +17,24 @@ const Calendar = ({
   onTaskClick,
   onRegenerateSchedule,
 }) => {
-  // Generate time slots for the day
+  const tz = schedule?.timezone;
+  const startMinutesOf = (slot) =>
+    minutesOfDayInTimeZone(slot.scheduledStart, tz);
+
+  // Generate time slots for the day (grid also stretches to fit any task
+  // placed outside working hours, e.g. a fixed appointment)
   const generateTimeSlots = () => {
     const slots = [];
-    const startHour = schedule?.workingHours?.start
+    let startHour = schedule?.workingHours?.start
       ? parseInt(schedule.workingHours.start.split(":")[0])
       : 9;
-    const endHour = schedule?.workingHours?.end
+    let endHour = schedule?.workingHours?.end
       ? parseInt(schedule.workingHours.end.split(":")[0])
       : 17;
+    (schedule?.slots || []).forEach((slot) => {
+      startHour = Math.min(startHour, Math.floor(startMinutesOf(slot) / 60));
+      endHour = Math.max(endHour, Math.floor(startMinutesOf(slot) / 60));
+    });
 
     for (let hour = startHour; hour <= endHour; hour++) {
       slots.push({
@@ -38,16 +51,14 @@ const Calendar = ({
   const getTasksForHour = (hour) => {
     if (!schedule?.slots) return [];
 
-    return schedule.slots.filter((slot) => {
-      const startHour = new Date(slot.scheduledStart).getHours();
-      return startHour === hour;
-    });
+    return schedule.slots.filter(
+      (slot) => Math.floor(startMinutesOf(slot) / 60) === hour,
+    );
   };
 
   // Calculate task position and height
   const getTaskStyle = (slot) => {
-    const start = new Date(slot.scheduledStart);
-    const startMinutes = start.getMinutes();
+    const startMinutes = startMinutesOf(slot) % 60;
     const top = (startMinutes / 60) * 100;
     const height = Math.min((slot.durationMinutes / 60) * 100, 200);
 
@@ -68,6 +79,22 @@ const Calendar = ({
     };
     return colors[priority] || colors.medium;
   };
+
+  // Small badges explaining *why* a slot looks the way it does
+  const getFlagBadges = (slot) => (
+    <>
+      {slot.fixed && (
+        <span className="px-2.5 py-1 bg-indigo-100 text-indigo-700 text-xs font-bold rounded-lg">
+          📌 Fixed
+        </span>
+      )}
+      {slot.overdue && (
+        <span className="px-2.5 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-lg">
+          ⚠️ Overdue
+        </span>
+      )}
+    </>
+  );
 
   // Get energy badge
   const getEnergyBadge = (energyLevel) => {
@@ -265,7 +292,12 @@ const Calendar = ({
                       tasksInSlot.map((taskSlot) => (
                         <div
                           key={taskSlot.taskId}
-                          onClick={() => onTaskClick(taskSlot.task)}
+                          onClick={() =>
+                            onTaskClick({
+                              ...taskSlot.task,
+                              _id: taskSlot.task._id || taskSlot.taskId,
+                            })
+                          }
                           className={`absolute left-6 right-4 p-4 rounded-2xl border-l-4 cursor-pointer 
                             shadow-sm hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 ${getPriorityClasses(taskSlot.task.priority)}`}
                           style={getTaskStyle(taskSlot)}
@@ -289,20 +321,21 @@ const Calendar = ({
                                     d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                                   />
                                 </svg>
-                                {format(
-                                  new Date(taskSlot.scheduledStart),
-                                  "h:mm a",
+                                {formatTimeInTimeZone(
+                                  taskSlot.scheduledStart,
+                                  tz,
                                 )}{" "}
                                 -{" "}
-                                {format(
-                                  new Date(taskSlot.scheduledEnd),
-                                  "h:mm a",
+                                {formatTimeInTimeZone(
+                                  taskSlot.scheduledEnd,
+                                  tz,
                                 )}{" "}
                                 ({taskSlot.durationMinutes} min)
                               </p>
                             </div>
-                            <div className="ml-3">
+                            <div className="ml-3 flex flex-col items-end gap-1">
                               {getEnergyBadge(taskSlot.task.energyLevel)}
+                              {getFlagBadges(taskSlot)}
                             </div>
                           </div>
 

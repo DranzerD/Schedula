@@ -50,6 +50,16 @@ const registerValidation = [
     .isLength({ min: 6 })
     .withMessage("Password must be at least 6 characters"),
 
+  body("timezone")
+    .optional()
+    .isString()
+    .custom((value) => {
+      if (!require("../utils/timezone").isValidTimeZone(value)) {
+        throw new Error("Unknown timezone");
+      }
+      return true;
+    }),
+
   handleValidationErrors,
 ];
 
@@ -115,6 +125,11 @@ const createTaskValidation = [
     .isIn(["fixed", "movable"])
     .withMessage("Flexibility must be fixed or movable"),
 
+  body("scheduledStart")
+    .optional({ nullable: true })
+    .isISO8601()
+    .withMessage("Scheduled start must be a valid date"),
+
   body("energyLevel")
     .optional()
     .isIn(["low-focus", "deep-focus"])
@@ -166,6 +181,11 @@ const updateTaskValidation = [
     .isIn(["low-focus", "deep-focus"])
     .withMessage("Energy level must be low-focus or deep-focus"),
 
+  body("scheduledStart")
+    .optional({ nullable: true })
+    .isISO8601()
+    .withMessage("Scheduled start must be a valid date"),
+
   body("isCompleted")
     .optional()
     .isBoolean()
@@ -206,7 +226,13 @@ const updateSettingsValidation = [
   body("timezone")
     .optional()
     .isString()
-    .withMessage("Timezone must be a string"),
+    .withMessage("Timezone must be a string")
+    .custom((value) => {
+      if (!require("../utils/timezone").isValidTimeZone(value)) {
+        throw new Error("Unknown timezone");
+      }
+      return true;
+    }),
 
   handleValidationErrors,
 ];

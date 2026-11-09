@@ -21,6 +21,7 @@ const createTask = async (req, res) => {
       priority,
       flexibility,
       energyLevel,
+      scheduledStart,
     } = req.body;
 
     // Create task
@@ -33,6 +34,13 @@ const createTask = async (req, res) => {
       priority: priority || "medium",
       flexibility: flexibility || "movable",
       energyLevel: energyLevel || "low-focus",
+      // Fixed-time tasks carry the exact start chosen by the user
+      ...(scheduledStart && {
+        scheduledStart,
+        scheduledEnd: new Date(
+          new Date(scheduledStart).getTime() + estimatedDuration * 60000,
+        ),
+      }),
     });
 
     // Calculate initial scores
@@ -226,6 +234,18 @@ const updateTask = async (req, res) => {
         task[field] = req.body[field];
       }
     });
+
+    // Keep the end of a fixed-time task in sync with its start + duration
+    if (
+      task.flexibility === "fixed" &&
+      task.scheduledStart &&
+      (req.body.scheduledStart !== undefined ||
+        req.body.estimatedDuration !== undefined)
+    ) {
+      task.scheduledEnd = new Date(
+        new Date(task.scheduledStart).getTime() + task.estimatedDuration * 60000,
+      );
+    }
 
     // Set completion timestamp
     if (isBeingCompleted) {

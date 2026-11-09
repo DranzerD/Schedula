@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from "react";
 import { format, addDays } from "date-fns";
 
-const TaskForm = ({ task, onSubmit, onClose }) => {
+const TaskForm = ({ task, draft, onSubmit, onClose }) => {
   const isEditing = !!task;
 
   const [formData, setFormData] = useState({
@@ -17,10 +17,30 @@ const TaskForm = ({ task, onSubmit, onClose }) => {
     priority: "medium",
     flexibility: "movable",
     energyLevel: "low-focus",
+    scheduledStart: "",
   });
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const toInput = (iso) => format(new Date(iso), "yyyy-MM-dd'T'HH:mm");
+
+  // Pre-fill from an AI-parsed draft (user reviews before saving)
+  useEffect(() => {
+    if (draft && !task) {
+      setFormData((prev) => ({
+        ...prev,
+        title: draft.title || "",
+        description: draft.description || "",
+        estimatedDuration: draft.estimatedDuration || 30,
+        deadline: draft.deadline ? toInput(draft.deadline) : prev.deadline,
+        priority: draft.priority || "medium",
+        flexibility: draft.flexibility || "movable",
+        energyLevel: draft.energyLevel || "low-focus",
+        scheduledStart: draft.scheduledStart ? toInput(draft.scheduledStart) : "",
+      }));
+    }
+  }, [draft]);
 
   // Populate form when editing
   useEffect(() => {
@@ -35,6 +55,10 @@ const TaskForm = ({ task, onSubmit, onClose }) => {
         priority: task.priority || "medium",
         flexibility: task.flexibility || "movable",
         energyLevel: task.energyLevel || "low-focus",
+        scheduledStart:
+          task.scheduledStart && task.flexibility === "fixed"
+            ? toInput(task.scheduledStart)
+            : "",
       });
     }
   }, [task]);
@@ -69,13 +93,39 @@ const TaskForm = ({ task, onSubmit, onClose }) => {
       return;
     }
 
+    const isFixed = formData.flexibility === "fixed";
+    if (isFixed) {
+      if (!formData.scheduledStart) {
+        setError("Fixed-time tasks need a start time");
+        return;
+      }
+      const start = new Date(formData.scheduledStart);
+      if (!isEditing && start <= new Date()) {
+        setError("Start time must be in the future");
+        return;
+      }
+      if (
+        start.getTime() + formData.estimatedDuration * 60000 >
+        deadlineDate.getTime()
+      ) {
+        setError("A fixed task must finish before its deadline");
+        return;
+      }
+    }
+
     setIsLoading(true);
 
     try {
-      await onSubmit({
+      const payload = {
         ...formData,
         deadline: new Date(formData.deadline).toISOString(),
-      });
+      };
+      if (isFixed) {
+        payload.scheduledStart = new Date(formData.scheduledStart).toISOString();
+      } else {
+        delete payload.scheduledStart;
+      }
+      await onSubmit(payload);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to save task");
     } finally {
@@ -138,6 +188,24 @@ const TaskForm = ({ task, onSubmit, onClose }) => {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {draft &&
+              !isEditing &&
+              (draft.assumptions?.length > 0 || draft.warnings?.length > 0) && (
+                <div className="p-4 bg-amber-50 border-2 border-amber-200 rounded-2xl text-sm text-amber-800">
+                  <p className="font-semibold mb-1">
+                    ✨ Parsed by {draft.source === "groq" ? "Groq" : "rules"} —
+                    please check:
+                  </p>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {[...(draft.assumptions || []), ...(draft.warnings || [])].map(
+                      (a) => (
+                        <li key={a}>{a}</li>
+                      ),
+                    )}
+                  </ul>
+                </div>
+              )}
+
             {error && (
               <div className="p-4 bg-red-50/80 border-2 border-red-200 rounded-2xl flex items-center gap-3 animate-scale-in">
                 <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -338,6 +406,20 @@ const TaskForm = ({ task, onSubmit, onClose }) => {
                   ? "This task must be scheduled at a specific time"
                   : "This task can be scheduled flexibly based on availability"}
               </p>
+              {formData.flexibility === "fixed" && (
+                <div className="mt-3">
+                  <label className="input-label">
+                    Start time <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="datetime-local"
+                    name="scheduledStart"
+                    value={formData.scheduledStart}
+                    onChange={handleChange}
+                    className="input-modern"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Energy Level */}

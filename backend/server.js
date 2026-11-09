@@ -3,7 +3,9 @@
  * Explainable AI-Powered Personal Scheduling System
  */
 
-require("dotenv").config({ path: __dirname + "/.env" });
+// Real env vars win (PORT=..., hosting settings); only GROQ_* in backend/.env
+// override stale shell values — see config/env.js
+require("./config/env").loadEnv();
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
@@ -13,6 +15,7 @@ const authRoutes = require("./routes/auth");
 const taskRoutes = require("./routes/tasks");
 const scheduleRoutes = require("./routes/schedule");
 const userRoutes = require("./routes/user");
+const aiRoutes = require("./routes/ai");
 
 // Initialize express app
 const app = express();
@@ -30,7 +33,7 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json());
+app.use(express.json({ limit: "100kb" }));
 
 // Request logging in development
 if (process.env.NODE_ENV === "development") {
@@ -45,6 +48,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/schedule", scheduleRoutes);
 app.use("/api/user", userRoutes);
+app.use("/api/ai", aiRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
@@ -54,6 +58,9 @@ app.get("/api/health", (req, res) => {
     timestamp: new Date().toISOString(),
     service: "Schedula API",
     database: getConnectionStatus() ? "connected" : "disconnected",
+    ai: require("./services/groqService").isConfigured()
+      ? "groq-configured"
+      : "rules-only",
   });
 });
 

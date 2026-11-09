@@ -23,7 +23,7 @@ const register = async (req, res) => {
       });
     }
 
-    const { name, email, password } = req.body;
+    const { name, email, password, timezone } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -39,6 +39,7 @@ const register = async (req, res) => {
       name,
       email,
       password,
+      ...(timezone && { timezone }),
     });
 
     // Generate token

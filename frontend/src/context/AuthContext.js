@@ -48,7 +48,18 @@ export const AuthProvider = ({ children }) => {
   const register = async (name, email, password) => {
     try {
       setError(null);
-      const response = await authAPI.register({ name, email, password });
+      let timezone;
+      try {
+        timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      } catch (e) {
+        /* server defaults to UTC */
+      }
+      const response = await authAPI.register({
+        name,
+        email,
+        password,
+        timezone,
+      });
       const { user: newUser, token } = response.data.data;
 
       localStorage.setItem("token", token);

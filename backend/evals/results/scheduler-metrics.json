@@ -1,0 +1,965 @@
+{
+  "generatedAt": "2026-11-09T07:01:37.989Z",
+  "seeds": 300,
+  "scenarios": [
+    {
+      "name": "light (5 tasks)",
+      "n": 5,
+      "summary": {
+        "schedula": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 91.78888888888889,
+            "sd": 13.778921027596903
+          },
+          "valuePct": {
+            "mean": 89.13442639004454,
+            "sd": 20.137493342276333
+          },
+          "criticalPlacedPct": {
+            "mean": 94.28921568627452,
+            "sd": 19.116003261309523
+          },
+          "missedFeasibleCritical": {
+            "mean": 0.05333333333333334,
+            "sd": 0.23947173373856703
+          },
+          "deepInPeakPct": {
+            "mean": 83.47445917581665,
+            "sd": 32.917572306747324
+          },
+          "utilizationPct": {
+            "mean": 61.979166666666664,
+            "sd": 15.837462972867387
+          },
+          "highPlacedPct": {
+            "mean": 93.90476190476188,
+            "sd": 21.315092091869435
+          }
+        },
+        "edf": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 90.90555555555557,
+            "sd": 14.219583335286563
+          },
+          "valuePct": {
+            "mean": 87.81927213612663,
+            "sd": 20.78579376732837
+          },
+          "criticalPlacedPct": {
+            "mean": 91.45833333333331,
+            "sd": 21.40363330500651
+          },
+          "missedFeasibleCritical": {
+            "mean": 0.12666666666666668,
+            "sd": 0.3711442429196452
+          },
+          "deepInPeakPct": {
+            "mean": 75.53160613068448,
+            "sd": 37.84720091834714
+          },
+          "utilizationPct": {
+            "mean": 61.291666666666664,
+            "sd": 15.77079416890439
+          },
+          "highPlacedPct": {
+            "mean": 91.33333333333331,
+            "sd": 23.96250796546326
+          }
+        },
+        "priority": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 89.02222222222223,
+            "sd": 14.940345476362086
+          },
+          "valuePct": {
+            "mean": 88.95425033438941,
+            "sd": 18.067168649878624
+          },
+          "criticalPlacedPct": {
+            "mean": 82.94117647058823,
+            "sd": 29.19287017912962
+          },
+          "missedFeasibleCritical": {
+            "mean": 0.26666666666666666,
+            "sd": 0.49972121547874343
+          },
+          "deepInPeakPct": {
+            "mean": 77.1879851414735,
+            "sd": 37.17981653292378
+          },
+          "utilizationPct": {
+            "mean": 60.822916666666664,
+            "sd": 15.757793429144007
+          },
+          "highPlacedPct": {
+            "mean": 98.09523809523809,
+            "sd": 12.100201973281166
+          }
+        },
+        "fifo": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 87.57222222222222,
+            "sd": 15.451352756127921
+          },
+          "valuePct": {
+            "mean": 84.8552317655537,
+            "sd": 21.543083687247602
+          },
+          "criticalPlacedPct": {
+            "mean": 77.1936274509804,
+            "sd": 32.00182075455223
+          },
+          "missedFeasibleCritical": {
+            "mean": 0.36,
+            "sd": 0.5335562521866755
+          },
+          "deepInPeakPct": {
+            "mean": 76.72660413314621,
+            "sd": 38.45954450955094
+          },
+          "utilizationPct": {
+            "mean": 59.354166666666664,
+            "sd": 15.621850295694573
+          },
+          "highPlacedPct": {
+            "mean": 89.04761904761904,
+            "sd": 28.066371670661358
+          }
+        },
+        "random": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 87.38333333333334,
+            "sd": 15.236135268221958
+          },
+          "valuePct": {
+            "mean": 85.86620358779825,
+            "sd": 20.17126446413252
+          },
+          "criticalPlacedPct": {
+            "mean": 76.36642156862746,
+            "sd": 33.391120388644026
+          },
+          "missedFeasibleCritical": {
+            "mean": 0.3566666666666667,
+            "sd": 0.5199584067063155
+          },
+          "deepInPeakPct": {
+            "mean": 73.85905185444356,
+            "sd": 39.475329902110815
+          },
+          "utilizationPct": {
+            "mean": 60.104166666666664,
+            "sd": 15.748536168282477
+          },
+          "highPlacedPct": {
+            "mean": 86.76190476190474,
+            "sd": 30.075317484044973
+          }
+        }
+      },
+      "headToHead": {
+        "vsEdf": {
+          "win": 32,
+          "tie": 261,
+          "loss": 7
+        },
+        "vsPriority": {
+          "win": 63,
+          "tie": 229,
+          "loss": 8
+        }
+      }
+    },
+    {
+      "name": "typical (10 tasks)",
+      "n": 10,
+      "summary": {
+        "schedula": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 58.79232804232801,
+            "sd": 14.757120031100522
+          },
+          "valuePct": {
+            "mean": 51.85261639353511,
+            "sd": 17.220076919629218
+          },
+          "highPlacedPct": {
+            "mean": 76.06060606060606,
+            "sd": 33.36416323193783
+          },
+          "criticalPlacedPct": {
+            "mean": 83.4854276158624,
+            "sd": 19.285225966136473
+          },
+          "missedFeasibleCritical": {
+            "mean": 0.5966666666666667,
+            "sd": 0.7891332755906137
+          },
+          "utilizationPct": {
+            "mean": 76.9375,
+            "sd": 7.11205771676209
+          },
+          "deepInPeakPct": {
+            "mean": 59.14005590763404,
+            "sd": 41.33132495241791
+          }
+        },
+        "edf": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 59.36071428571425,
+            "sd": 14.741539868369081
+          },
+          "valuePct": {
+            "mean": 48.588169173923006,
+            "sd": 16.30968457830371
+          },
+          "highPlacedPct": {
+            "mean": 58.72859025032938,
+            "sd": 38.321796451027666
+          },
+          "criticalPlacedPct": {
+            "mean": 78.08528428093645,
+            "sd": 21.862708911532277
+          },
+          "missedFeasibleCritical": {
+            "mean": 0.8633333333333333,
+            "sd": 1.0139440306116185
+          },
+          "utilizationPct": {
+            "mean": 76.54166666666667,
+            "sd": 7.510328265645121
+          },
+          "deepInPeakPct": {
+            "mean": 59.998600605743476,
+            "sd": 38.693839923256704
+          }
+        },
+        "priority": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 57.5093915343915,
+            "sd": 14.535317339076107
+          },
+          "valuePct": {
+            "mean": 56.87950475352035,
+            "sd": 16.666783649443676
+          },
+          "highPlacedPct": {
+            "mean": 92.97101449275362,
+            "sd": 16.68816189205168
+          },
+          "criticalPlacedPct": {
+            "mean": 56.75983436853001,
+            "sd": 25.50112099569712
+          },
+          "missedFeasibleCritical": {
+            "mean": 1.5533333333333332,
+            "sd": 1.0728430436040446
+          },
+          "utilizationPct": {
+            "mean": 76.22916666666667,
+            "sd": 7.721748548160945
+          },
+          "deepInPeakPct": {
+            "mean": 58.27359157046659,
+            "sd": 40.268462074133005
+          }
+        },
+        "fifo": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 56.86124338624333,
+            "sd": 13.394285195103455
+          },
+          "valuePct": {
+            "mean": 47.517766381126535,
+            "sd": 16.88165794965003
+          },
+          "highPlacedPct": {
+            "mean": 60.105401844532274,
+            "sd": 36.87814616690771
+          },
+          "criticalPlacedPct": {
+            "mean": 46.82791845835326,
+            "sd": 25.908998727913296
+          },
+          "missedFeasibleCritical": {
+            "mean": 1.8866666666666667,
+            "sd": 1.1126314385045555
+          },
+          "utilizationPct": {
+            "mean": 75.54166666666667,
+            "sd": 8.53999256237617
+          },
+          "deepInPeakPct": {
+            "mean": 58.549019864544064,
+            "sd": 40.755430376010544
+          }
+        },
+        "random": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 55.788095238095195,
+            "sd": 14.16583336942216
+          },
+          "valuePct": {
+            "mean": 48.52184018718743,
+            "sd": 16.478592674087118
+          },
+          "highPlacedPct": {
+            "mean": 56.581027667984195,
+            "sd": 37.60586643929995
+          },
+          "criticalPlacedPct": {
+            "mean": 45.85841694537348,
+            "sd": 26.355536594731912
+          },
+          "missedFeasibleCritical": {
+            "mean": 1.93,
+            "sd": 1.1086917174826898
+          },
+          "utilizationPct": {
+            "mean": 76.26041666666667,
+            "sd": 8.453909679706245
+          },
+          "deepInPeakPct": {
+            "mean": 61.39291438454618,
+            "sd": 40.74184904966334
+          }
+        }
+      },
+      "headToHead": {
+        "vsEdf": {
+          "win": 170,
+          "tie": 98,
+          "loss": 32
+        },
+        "vsPriority": {
+          "win": 213,
+          "tie": 60,
+          "loss": 27
+        }
+      }
+    },
+    {
+      "name": "heavy (20 tasks)",
+      "n": 20,
+      "summary": {
+        "schedula": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 28.593889339361453,
+            "sd": 8.563893070840855
+          },
+          "valuePct": {
+            "mean": 20.252159361320196,
+            "sd": 8.808423298574349
+          },
+          "highPlacedPct": {
+            "mean": 41.006860371267166,
+            "sd": 27.47627035585179
+          },
+          "criticalPlacedPct": {
+            "mean": 55.76667869167869,
+            "sd": 20.626949911060464
+          },
+          "missedFeasibleCritical": {
+            "mean": 3.1566666666666667,
+            "sd": 1.8339392937971895
+          },
+          "deepInPeakPct": {
+            "mean": 55.44964222979788,
+            "sd": 40.73644623941516
+          },
+          "utilizationPct": {
+            "mean": 75.95833333333333,
+            "sd": 5.622173512581602
+          }
+        },
+        "edf": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 28.07176458302618,
+            "sd": 8.681170492107443
+          },
+          "valuePct": {
+            "mean": 18.691326295119385,
+            "sd": 8.227273769406306
+          },
+          "highPlacedPct": {
+            "mean": 25.505246166263102,
+            "sd": 22.84024203234633
+          },
+          "criticalPlacedPct": {
+            "mean": 50.89243626743629,
+            "sd": 19.38090601752488
+          },
+          "missedFeasibleCritical": {
+            "mean": 3.54,
+            "sd": 1.8797637366662907
+          },
+          "deepInPeakPct": {
+            "mean": 57.19035982691443,
+            "sd": 41.76129658494894
+          },
+          "utilizationPct": {
+            "mean": 76.05208333333333,
+            "sd": 5.746313147781232
+          }
+        },
+        "priority": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 27.69454866742016,
+            "sd": 8.636213796218367
+          },
+          "valuePct": {
+            "mean": 26.02977679992973,
+            "sd": 10.76109441644878
+          },
+          "highPlacedPct": {
+            "mean": 76.00121065375303,
+            "sd": 26.844675927065133
+          },
+          "criticalPlacedPct": {
+            "mean": 31.98817941317943,
+            "sd": 16.056361645322465
+          },
+          "missedFeasibleCritical": {
+            "mean": 4.866666666666666,
+            "sd": 1.8091801083465981
+          },
+          "deepInPeakPct": {
+            "mean": 54.52769107333421,
+            "sd": 41.26552951203005
+          },
+          "utilizationPct": {
+            "mean": 76.0625,
+            "sd": 5.758586543582819
+          }
+        },
+        "fifo": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 27.508882705128816,
+            "sd": 8.208239440325107
+          },
+          "valuePct": {
+            "mean": 18.67505659153369,
+            "sd": 8.050008320928363
+          },
+          "highPlacedPct": {
+            "mean": 27.059725585149312,
+            "sd": 25.63244535475524
+          },
+          "criticalPlacedPct": {
+            "mean": 22.440560365560373,
+            "sd": 14.682165313020038
+          },
+          "missedFeasibleCritical": {
+            "mean": 5.546666666666667,
+            "sd": 1.829109353111788
+          },
+          "deepInPeakPct": {
+            "mean": 55.71927139154032,
+            "sd": 41.113474236912985
+          },
+          "utilizationPct": {
+            "mean": 76.21875,
+            "sd": 5.909876775294379
+          }
+        },
+        "random": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 27.152204858551602,
+            "sd": 8.406178716895766
+          },
+          "valuePct": {
+            "mean": 18.500591898278188,
+            "sd": 8.306931615784773
+          },
+          "highPlacedPct": {
+            "mean": 25.349071832122668,
+            "sd": 24.818434813026276
+          },
+          "criticalPlacedPct": {
+            "mean": 20.44062049062049,
+            "sd": 15.178379750609372
+          },
+          "missedFeasibleCritical": {
+            "mean": 5.7,
+            "sd": 1.8424572802188504
+          },
+          "deepInPeakPct": {
+            "mean": 54.20267146408224,
+            "sd": 40.411252557458724
+          },
+          "utilizationPct": {
+            "mean": 76.15625,
+            "sd": 6.010052241646857
+          }
+        }
+      },
+      "headToHead": {
+        "vsEdf": {
+          "win": 203,
+          "tie": 44,
+          "loss": 53
+        },
+        "vsPriority": {
+          "win": 251,
+          "tie": 22,
+          "loss": 27
+        }
+      }
+    },
+    {
+      "name": "overloaded (40 tasks)",
+      "n": 40,
+      "summary": {
+        "schedula": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 11.034607473152375,
+            "sd": 4.946496053309322
+          },
+          "valuePct": {
+            "mean": 5.398511478635874,
+            "sd": 3.2812284706792174
+          },
+          "highPlacedPct": {
+            "mean": 14.107902282902279,
+            "sd": 14.2135868399936
+          },
+          "criticalPlacedPct": {
+            "mean": 24.29740832241,
+            "sd": 13.030366894493188
+          },
+          "missedFeasibleCritical": {
+            "mean": 10.933333333333334,
+            "sd": 3.2150704214587096
+          },
+          "deepInPeakPct": {
+            "mean": 44.97150824253629,
+            "sd": 42.07293853385333
+          },
+          "utilizationPct": {
+            "mean": 74.3125,
+            "sd": 4.980496031427346
+          }
+        },
+        "edf": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 10.46554409480106,
+            "sd": 4.576151710047882
+          },
+          "valuePct": {
+            "mean": 5.290035827556435,
+            "sd": 3.3521979374591586
+          },
+          "highPlacedPct": {
+            "mean": 10.689319939319939,
+            "sd": 11.905980300327187
+          },
+          "criticalPlacedPct": {
+            "mean": 21.56066148987639,
+            "sd": 11.494638080441328
+          },
+          "missedFeasibleCritical": {
+            "mean": 11.353333333333333,
+            "sd": 3.212926788883405
+          },
+          "deepInPeakPct": {
+            "mean": 54.075770362535074,
+            "sd": 42.38076258349567
+          },
+          "utilizationPct": {
+            "mean": 74.76041666666667,
+            "sd": 5.266581339579805
+          }
+        },
+        "priority": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 10.29365360464432,
+            "sd": 4.462133432216227
+          },
+          "valuePct": {
+            "mean": 7.890796128660571,
+            "sd": 5.052074649491643
+          },
+          "highPlacedPct": {
+            "mean": 39.92775650275654,
+            "sd": 23.642940185262628
+          },
+          "criticalPlacedPct": {
+            "mean": 13.049879160314617,
+            "sd": 7.774219648303581
+          },
+          "missedFeasibleCritical": {
+            "mean": 12.573333333333334,
+            "sd": 3.029060290425454
+          },
+          "deepInPeakPct": {
+            "mean": 49.168566362715296,
+            "sd": 44.34367579592478
+          },
+          "utilizationPct": {
+            "mean": 74.97916666666667,
+            "sd": 5.287470136119609
+          }
+        },
+        "fifo": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 10.16131390519936,
+            "sd": 4.277948650475635
+          },
+          "valuePct": {
+            "mean": 5.329554802292041,
+            "sd": 3.623214367501716
+          },
+          "highPlacedPct": {
+            "mean": 10.526786176786173,
+            "sd": 11.723470748732359
+          },
+          "criticalPlacedPct": {
+            "mean": 8.027916096855389,
+            "sd": 6.616012790108468
+          },
+          "missedFeasibleCritical": {
+            "mean": 13.3,
+            "sd": 2.995537372018114
+          },
+          "utilizationPct": {
+            "mean": 75.04166666666667,
+            "sd": 5.457567899729335
+          },
+          "deepInPeakPct": {
+            "mean": 53.89612288296499,
+            "sd": 42.871646528100975
+          }
+        },
+        "random": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 10.130318884730656,
+            "sd": 4.319995952975018
+          },
+          "valuePct": {
+            "mean": 5.2716870127314435,
+            "sd": 3.493765993786087
+          },
+          "highPlacedPct": {
+            "mean": 10.1318487068487,
+            "sd": 12.180350267618136
+          },
+          "criticalPlacedPct": {
+            "mean": 7.527931185613916,
+            "sd": 6.33804707822999
+          },
+          "missedFeasibleCritical": {
+            "mean": 13.36,
+            "sd": 2.8841163447928038
+          },
+          "deepInPeakPct": {
+            "mean": 52.38771032888678,
+            "sd": 44.39149342537814
+          },
+          "utilizationPct": {
+            "mean": 74.91666666666667,
+            "sd": 5.33604568014156
+          }
+        }
+      },
+      "headToHead": {
+        "vsEdf": {
+          "win": 181,
+          "tie": 57,
+          "loss": 62
+        },
+        "vsPriority": {
+          "win": 225,
+          "tie": 34,
+          "loss": 41
+        }
+      }
+    },
+    {
+      "name": "mid-afternoon start (12 tasks, now=13:20)",
+      "n": 12,
+      "summary": {
+        "schedula": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 20.721380471380442,
+            "sd": 10.824212971208828
+          },
+          "valuePct": {
+            "mean": 12.775563153634469,
+            "sd": 8.558063272106452
+          },
+          "highPlacedPct": {
+            "mean": 28.172839506172846,
+            "sd": 33.47360453400147
+          },
+          "criticalPlacedPct": {
+            "mean": 36.31746031746033,
+            "sd": 25.389062516338296
+          },
+          "missedFeasibleCritical": {
+            "mean": 2.65,
+            "sd": 1.6154045228905516
+          },
+          "deepInPeakPct": {
+            "mean": 0,
+            "sd": 0
+          },
+          "utilizationPct": {
+            "mean": 32.78125,
+            "sd": 4.061133034747782
+          }
+        },
+        "edf": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 20.29966329966327,
+            "sd": 10.769691695818134
+          },
+          "valuePct": {
+            "mean": 11.932775313460724,
+            "sd": 7.8595043323857325
+          },
+          "highPlacedPct": {
+            "mean": 21.172839506172835,
+            "sd": 30.695553763059902
+          },
+          "criticalPlacedPct": {
+            "mean": 34.44880952380953,
+            "sd": 24.43520928430386
+          },
+          "missedFeasibleCritical": {
+            "mean": 2.7533333333333334,
+            "sd": 1.6148833962551488
+          },
+          "deepInPeakPct": {
+            "mean": 0,
+            "sd": 0
+          },
+          "utilizationPct": {
+            "mean": 32.864583333333336,
+            "sd": 4.21095901537319
+          }
+        },
+        "priority": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 19.999663299663265,
+            "sd": 10.281305357156409
+          },
+          "valuePct": {
+            "mean": 16.04644011014502,
+            "sd": 10.567114051205166
+          },
+          "highPlacedPct": {
+            "mean": 53.26543209876541,
+            "sd": 36.84318105442483
+          },
+          "criticalPlacedPct": {
+            "mean": 23.202380952380953,
+            "sd": 19.973739053670005
+          },
+          "missedFeasibleCritical": {
+            "mean": 3.2333333333333334,
+            "sd": 1.5492652985981326
+          },
+          "deepInPeakPct": {
+            "mean": 0,
+            "sd": 0
+          },
+          "utilizationPct": {
+            "mean": 32.739583333333336,
+            "sd": 4.179506588998331
+          }
+        },
+        "fifo": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 19.794612794612757,
+            "sd": 10.02050307396616
+          },
+          "valuePct": {
+            "mean": 12.06761205206669,
+            "sd": 8.511894963413141
+          },
+          "highPlacedPct": {
+            "mean": 20.037037037037035,
+            "sd": 29.47878959881044
+          },
+          "criticalPlacedPct": {
+            "mean": 14.796031746031742,
+            "sd": 16.730333862229084
+          },
+          "missedFeasibleCritical": {
+            "mean": 3.63,
+            "sd": 1.543060850808436
+          },
+          "deepInPeakPct": {
+            "mean": 0,
+            "sd": 0
+          },
+          "utilizationPct": {
+            "mean": 32.822916666666664,
+            "sd": 4.195729363614611
+          }
+        },
+        "random": {
+          "violations": 0,
+          "placedPct": {
+            "mean": 19.390572390572355,
+            "sd": 10.095494704943725
+          },
+          "valuePct": {
+            "mean": 11.94141930381321,
+            "sd": 7.759141549304239
+          },
+          "highPlacedPct": {
+            "mean": 20.46296296296296,
+            "sd": 29.909709691946798
+          },
+          "criticalPlacedPct": {
+            "mean": 15.19761904761904,
+            "sd": 17.685472157121904
+          },
+          "missedFeasibleCritical": {
+            "mean": 3.6066666666666665,
+            "sd": 1.5208546561630387
+          },
+          "deepInPeakPct": {
+            "mean": 0,
+            "sd": 0
+          },
+          "utilizationPct": {
+            "mean": 32.8125,
+            "sd": 4.1250886784833085
+          }
+        }
+      },
+      "headToHead": {
+        "vsEdf": {
+          "win": 99,
+          "tie": 165,
+          "loss": 36
+        },
+        "vsPriority": {
+          "win": 140,
+          "tie": 123,
+          "loss": 37
+        }
+      }
+    }
+  ],
+  "determinism": {
+    "trials": 200,
+    "identicalOnRerun": 200,
+    "identicalWhenInputShuffled": 200
+  },
+  "explainability": {
+    "slots": 683,
+    "withText": 683,
+    "withReasons": 683,
+    "scoresMatch": 683,
+    "timeMatches": 683
+  },
+  "performance": [
+    {
+      "tasks": 10,
+      "medianMs": 2.56,
+      "p95Ms": 8.03
+    },
+    {
+      "tasks": 100,
+      "medianMs": 20.68,
+      "p95Ms": 26.98
+    },
+    {
+      "tasks": 500,
+      "medianMs": 101.11,
+      "p95Ms": 106.4
+    },
+    {
+      "tasks": 1000,
+      "medianMs": 207.17,
+      "p95Ms": 210.57
+    },
+    {
+      "tasks": 5000,
+      "medianMs": 1021.02,
+      "p95Ms": 1062.16
+    }
+  ],
+  "rules": {
+    "known-task": {
+      "checked": 8712,
+      "failed": 0
+    },
+    "not-completed": {
+      "checked": 8712,
+      "failed": 0
+    },
+    "unique": {
+      "checked": 8712,
+      "failed": 0
+    },
+    "duration": {
+      "checked": 8712,
+      "failed": 0
+    },
+    "no-overlap": {
+      "checked": 7212,
+      "failed": 0
+    },
+    "buffer": {
+      "checked": 6636,
+      "failed": 0
+    },
+    "within-working-hours": {
+      "checked": 6331,
+      "failed": 0
+    },
+    "not-in-past": {
+      "checked": 6331,
+      "failed": 0
+    },
+    "before-deadline": {
+      "checked": 4958,
+      "failed": 0
+    },
+    "deep-focus-cap": {
+      "checked": 1500,
+      "failed": 0
+    },
+    "conservation": {
+      "checked": 26100,
+      "failed": 0
+    },
+    "fixed-at-requested-time": {
+      "checked": 2381,
+      "failed": 0
+    },
+    "work-conserving": {
+      "checked": 16218,
+      "failed": 0
+    }
+  },
+  "hardRuleViolations": 0
+}

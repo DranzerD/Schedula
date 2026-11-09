@@ -329,6 +329,20 @@ const Settings = () => {
               }
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             >
+              {![
+                "UTC",
+                "America/New_York",
+                "America/Chicago",
+                "America/Denver",
+                "America/Los_Angeles",
+                "Europe/London",
+                "Europe/Paris",
+                "Asia/Tokyo",
+                "Asia/Kolkata",
+                "Australia/Sydney",
+              ].includes(settings.timezone) && (
+                <option value={settings.timezone}>{settings.timezone}</option>
+              )}
               <option value="UTC">UTC (Coordinated Universal Time)</option>
               <option value="America/New_York">
                 Eastern Time (US & Canada)
